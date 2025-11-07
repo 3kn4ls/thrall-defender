@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: thrall-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:////data/thrall_defender.db
+    volumes:
+      - ./data:/data
+      - ./backend/app:/app/app
+    network_mode: "host"  # Necesario para captura de paquetes
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: thrall-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  data:

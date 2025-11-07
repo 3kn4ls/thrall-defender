@@ -1,0 +1,90 @@
+/* You can add global styles to this file, and also import other style files */
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  background-color: #fafafa;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.mat-mdc-card {
+  margin-bottom: 20px;
+}
+
+.status-chip {
+  &.suspicious {
+    background-color: #ff9800;
+    color: white;
+  }
+
+  &.blocked {
+    background-color: #f44336;
+    color: white;
+  }
+
+  &.normal {
+    background-color: #4caf50;
+    color: white;
+  }
+}
+
+.alert-severity {
+  &.critical {
+    color: #d32f2f;
+    font-weight: bold;
+  }
+
+  &.high {
+    color: #f57c00;
+    font-weight: bold;
+  }
+
+  &.medium {
+    color: #fbc02d;
+  }
+
+  &.low {
+    color: #7cb342;
+  }
+}
+
+.stats-card {
+  text-align: center;
+
+  .stat-value {
+    font-size: 2.5em;
+    font-weight: 300;
+    margin: 10px 0;
+  }
+
+  .stat-label {
+    color: rgba(0, 0, 0, 0.54);
+    font-size: 0.9em;
+  }
+}

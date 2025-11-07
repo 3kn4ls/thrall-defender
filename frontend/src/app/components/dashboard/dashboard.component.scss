@@ -1,0 +1,30 @@
+.container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  overflow-y: auto;
+  height: calc(100vh - 64px);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.stats-card {
+  text-align: center;
+
+  .stat-value {
+    font-size: 2.5em;
+    font-weight: 300;
+    margin: 10px 0;
+  }
+
+  .stat-label {
+    color: rgba(0, 0, 0, 0.54);
+    font-size: 0.9em;
+    text-transform: uppercase;
+  }
+}

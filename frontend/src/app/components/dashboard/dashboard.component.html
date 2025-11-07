@@ -1,0 +1,123 @@
+<div class="container">
+  <div style="margin: 20px 0; display: flex; align-items: center; justify-content: space-between;">
+    <h1 style="margin: 0;">Dashboard de Monitorización</h1>
+    <div style="display: flex; align-items: center;">
+      <div [style.width.px]="12" [style.height.px]="12" [style.border-radius.px]="6"
+           [style.background-color]="isConnected ? '#4caf50' : '#f44336'"
+           style="margin-right: 8px;"></div>
+      <span style="font-size: 14px; color: rgba(0,0,0,0.6);">
+        {{ isConnected ? 'Conectado' : 'Desconectado' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Estadísticas -->
+  <div class="card-grid" *ngIf="stats && !loading">
+    <mat-card class="stats-card">
+      <mat-card-content>
+        <div class="stat-value">{{ stats.total_packets | number }}</div>
+        <div class="stat-label">Total Paquetes</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stats-card">
+      <mat-card-content>
+        <div class="stat-value">{{ stats.packets_last_hour | number }}</div>
+        <div class="stat-label">Última Hora</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stats-card">
+      <mat-card-content>
+        <div class="stat-value">{{ stats.unique_ips | number }}</div>
+        <div class="stat-label">IPs Únicas</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stats-card">
+      <mat-card-content>
+        <div class="stat-value" [style.color]="stats.suspicious_packets > 0 ? '#ff9800' : 'inherit'">
+          {{ stats.suspicious_packets | number }}
+        </div>
+        <div class="stat-label">Sospechosos</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stats-card">
+      <mat-card-content>
+        <div class="stat-value" [style.color]="stats.active_alerts > 0 ? '#f44336' : 'inherit'">
+          {{ stats.active_alerts | number }}
+        </div>
+        <div class="stat-label">Alertas Activas</div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" style="text-align: center; padding: 40px;">
+    <mat-spinner style="margin: 0 auto;"></mat-spinner>
+    <p>Cargando datos...</p>
+  </div>
+
+  <!-- Top Puertos y Protocolos -->
+  <div class="card-grid" *ngIf="stats && !loading">
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>Top Puertos (última hora)</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div *ngFor="let port of stats.top_ports" style="padding: 8px 0; border-bottom: 1px solid #eee;">
+          <div style="display: flex; justify-content: space-between;">
+            <span><strong>Puerto {{ port.port }}</strong></span>
+            <span>{{ port.count }} paquetes</span>
+          </div>
+        </div>
+        <div *ngIf="stats.top_ports.length === 0" style="padding: 20px; text-align: center; color: #999;">
+          No hay datos disponibles
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>Top Protocolos (última hora)</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div *ngFor="let proto of stats.top_protocols" style="padding: 8px 0; border-bottom: 1px solid #eee;">
+          <div style="display: flex; justify-content: space-between;">
+            <span><strong>{{ proto.protocol }}</strong></span>
+            <span>{{ proto.count }} paquetes</span>
+          </div>
+        </div>
+        <div *ngIf="stats.top_protocols.length === 0" style="padding: 20px; text-align: center; color: #999;">
+          No hay datos disponibles
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Tabs con contenido detallado -->
+  <mat-card style="margin-top: 20px;">
+    <mat-card-content>
+      <mat-tab-group>
+        <mat-tab label="Tráfico en Tiempo Real">
+          <div style="padding: 20px;">
+            <app-packet-list [packets]="recentPackets"></app-packet-list>
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Alertas">
+          <div style="padding: 20px;">
+            <app-alerts></app-alerts>
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Gestión de IPs">
+          <div style="padding: 20px;">
+            <app-ip-management></app-ip-management>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </mat-card-content>
+  </mat-card>
+</div>

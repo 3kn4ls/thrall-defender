@@ -1,0 +1,28 @@
+.ip-management {
+  h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+  }
+}
+
+.table-container {
+  overflow-x: auto;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.no-data {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+  }
+}
+
+mat-form-field {
+  width: 100%;
+}

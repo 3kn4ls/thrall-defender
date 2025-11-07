@@ -1,0 +1,136 @@
+<div class="ip-management">
+  <h3>Gestión de IPs</h3>
+
+  <mat-tab-group>
+    <!-- Whitelist Tab -->
+    <mat-tab label="Lista Blanca">
+      <div style="padding: 20px;">
+        <mat-card style="margin-bottom: 20px;">
+          <mat-card-header>
+            <mat-card-title>Añadir IP a Lista Blanca</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div style="display: flex; gap: 16px; align-items: flex-start;">
+              <mat-form-field style="flex: 1;">
+                <mat-label>Dirección IP</mat-label>
+                <input matInput [(ngModel)]="newWhitelistIp" placeholder="192.168.1.100">
+              </mat-form-field>
+              <mat-form-field style="flex: 2;">
+                <mat-label>Descripción</mat-label>
+                <input matInput [(ngModel)]="newWhitelistDesc" placeholder="Ej: Servidor local">
+              </mat-form-field>
+              <button mat-raised-button color="primary" (click)="addToWhitelist()">
+                <mat-icon>add</mat-icon>
+                Añadir
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <div class="table-container">
+          <table mat-table [dataSource]="whitelist" class="full-width">
+            <ng-container matColumnDef="ip_address">
+              <th mat-header-cell *matHeaderCellDef>Dirección IP</th>
+              <td mat-cell *matCellDef="let item">{{ item.ip_address }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="description">
+              <th mat-header-cell *matHeaderCellDef>Descripción</th>
+              <td mat-cell *matCellDef="let item">{{ item.description || '-' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="created_at">
+              <th mat-header-cell *matHeaderCellDef>Fecha</th>
+              <td mat-cell *matCellDef="let item">{{ item.created_at | date:'dd/MM/yyyy' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Acciones</th>
+              <td mat-cell *matCellDef="let item">
+                <button mat-icon-button color="warn" (click)="removeFromWhitelist(item.id)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="whitelistColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: whitelistColumns;"></tr>
+          </table>
+        </div>
+
+        <div *ngIf="whitelist.length === 0" class="no-data">
+          <mat-icon>info</mat-icon>
+          <p>No hay IPs en la lista blanca</p>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- Blacklist Tab -->
+    <mat-tab label="Lista Negra">
+      <div style="padding: 20px;">
+        <mat-card style="margin-bottom: 20px;">
+          <mat-card-header>
+            <mat-card-title>Añadir IP a Lista Negra</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div style="display: flex; gap: 16px; align-items: flex-start;">
+              <mat-form-field style="flex: 1;">
+                <mat-label>Dirección IP</mat-label>
+                <input matInput [(ngModel)]="newBlacklistIp" placeholder="192.168.1.100">
+              </mat-form-field>
+              <mat-form-field style="flex: 2;">
+                <mat-label>Descripción</mat-label>
+                <input matInput [(ngModel)]="newBlacklistDesc" placeholder="Ej: IP sospechosa">
+              </mat-form-field>
+              <button mat-raised-button color="warn" (click)="addToBlacklist()">
+                <mat-icon>block</mat-icon>
+                Bloquear
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <div class="table-container">
+          <table mat-table [dataSource]="blacklist" class="full-width">
+            <ng-container matColumnDef="ip_address">
+              <th mat-header-cell *matHeaderCellDef>Dirección IP</th>
+              <td mat-cell *matCellDef="let item">{{ item.ip_address }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="description">
+              <th mat-header-cell *matHeaderCellDef>Descripción</th>
+              <td mat-cell *matCellDef="let item">{{ item.description || '-' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="blocked_count">
+              <th mat-header-cell *matHeaderCellDef>Paquetes Bloqueados</th>
+              <td mat-cell *matCellDef="let item">{{ item.blocked_count }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="created_at">
+              <th mat-header-cell *matHeaderCellDef>Fecha</th>
+              <td mat-cell *matCellDef="let item">{{ item.created_at | date:'dd/MM/yyyy' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Acciones</th>
+              <td mat-cell *matCellDef="let item">
+                <button mat-icon-button color="primary" (click)="removeFromBlacklist(item.id)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="blacklistColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: blacklistColumns;"></tr>
+          </table>
+        </div>
+
+        <div *ngIf="blacklist.length === 0" class="no-data">
+          <mat-icon>info</mat-icon>
+          <p>No hay IPs en la lista negra</p>
+        </div>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

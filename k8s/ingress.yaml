@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: thrall-defender-ingress
+  namespace: thrall-defender
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  rules:
+  - host: thrall-defender.local  # Cambiar por tu dominio o IP
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: thrall-frontend
+            port:
+              number: 80
