@@ -26,6 +26,7 @@ import {
   DDoSGeoStats,
   DDoSConfig,
   DDoSAttack,
+  DDoSMetrics,
   DDoSStats
 } from '../../models/packet.model';
 
