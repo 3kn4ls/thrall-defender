@@ -282,3 +282,125 @@ class MitigateIPRequest(BaseModel):
     ip_address: str
     attack_type: str
     reason: Optional[str] = "DDoS attack detected"
+
+
+# ============================================================================
+# ADVANCED DDOS SCHEMAS
+# ============================================================================
+
+class DDoSMitigationLevelBase(BaseModel):
+    name: str
+    description: str
+    pps_threshold: int = 100
+    syn_threshold: int = 50
+    udp_threshold: int = 200
+    icmp_threshold: int = 50
+    connection_threshold: int = 100
+    rate_limit_enabled: bool = True
+    rate_limit_pps: int = 50
+    rate_limit_burst: int = 100
+    challenge_mode: str = "none"
+    challenge_threshold: int = 80
+    geo_blocking_enabled: bool = False
+    auto_mitigate: bool = True
+    mitigation_duration: int = 3600
+
+
+class DDoSMitigationLevelCreate(DDoSMitigationLevelBase):
+    pass
+
+
+class DDoSMitigationLevel(DDoSMitigationLevelBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DDoSGeoRuleBase(BaseModel):
+    country_code: str
+    country_name: str
+    action: str  # allow, block, challenge, rate_limit
+    priority: int = 100
+    enabled: bool = True
+    custom_rate_limit: Optional[int] = None
+    custom_burst: Optional[int] = None
+    reason: Optional[str] = None
+
+
+class DDoSGeoRuleCreate(DDoSGeoRuleBase):
+    pass
+
+
+class DDoSGeoRule(DDoSGeoRuleBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DDoSAdvancedConfigBase(BaseModel):
+    name: str = "default"
+    pattern_detection_enabled: bool = True
+    pattern_threshold: int = 5
+    behavioral_analysis_enabled: bool = True
+    learning_period_hours: int = 24
+    anomaly_sensitivity: float = 2.0
+    track_connections: bool = True
+    max_connections_per_ip: int = 100
+    max_connections_per_port: int = 1000
+    connection_timeout: int = 300
+    deep_packet_inspection: bool = False
+    inspect_payload: bool = False
+    malformed_packet_action: str = "drop"
+    progressive_mitigation: bool = True
+    blackhole_enabled: bool = False
+    notify_on_attack: bool = True
+    auto_create_firewall_rule: bool = True
+    whitelist_bypass_all: bool = True
+    trusted_asn_list: Optional[str] = None
+
+
+class DDoSAdvancedConfigCreate(DDoSAdvancedConfigBase):
+    pass
+
+
+class DDoSAdvancedConfig(DDoSAdvancedConfigBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DDoSAttackWithGeo(DDoSAttack):
+    """DDoS Attack with geographic information"""
+    country_code: Optional[str] = None
+    country_name: Optional[str] = None
+
+
+class DDoSProtectionStatus(BaseModel):
+    """Current DDoS protection status"""
+    protection_enabled: bool
+    active_level: Optional[DDoSMitigationLevel] = None
+    geo_rules_count: int
+    active_attacks_count: int
+    total_attacks_blocked_today: int
+    current_threat_level: str  # none, low, medium, high, critical
+    geoip_available: bool
+
+
+class DDoSGeoStats(BaseModel):
+    """Geographic statistics for DDoS attacks"""
+    country_code: str
+    country_name: str
+    attack_count: int
+    blocked_count: int
+    total_packets: int
+    severity_distribution: dict

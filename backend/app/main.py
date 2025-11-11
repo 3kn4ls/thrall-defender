@@ -12,6 +12,7 @@ from .database import init_db, get_db, async_session_maker
 from .services import NetworkService
 from .firewall_service import FirewallService
 from .ddos_service import DDoSService
+from .cleanup_service import CleanupService
 from .packet_capture import PacketCapture
 
 # Configurar logging
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 # Instancia global del capturador
 packet_capture = None
 active_websockets = set()
+cleanup_task = None
 
 
 @asynccontextmanager
@@ -45,11 +47,22 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(packet_capture.start_async())
     logger.info("Packet capture started")
 
+    # Iniciar cleanup task
+    global cleanup_task
+    cleanup_task = asyncio.create_task(CleanupService.start_cleanup_task())
+    logger.info("Database cleanup task started")
+
     yield
 
     # Shutdown
     if packet_capture:
         packet_capture.stop()
+    if cleanup_task:
+        cleanup_task.cancel()
+        try:
+            await cleanup_task
+        except asyncio.CancelledError:
+            pass
     logger.info("Thrall Defender Backend stopped")
 
 
@@ -580,6 +593,33 @@ async def end_ddos_attack(ip: str, db: AsyncSession = Depends(get_db)):
     """Marca un ataque DDoS como finalizado"""
     await DDoSService.end_attack(db, ip)
     return {"status": "ended", "ip_address": ip}
+
+
+# ============================================================================
+# CLEANUP ENDPOINTS
+# ============================================================================
+
+@app.post("/api/cleanup/run")
+async def run_cleanup(db: AsyncSession = Depends(get_db)):
+    """Ejecuta limpieza manual de la base de datos"""
+    stats = await CleanupService.cleanup_old_records(db)
+    return stats
+
+
+@app.get("/api/cleanup/stats")
+async def get_cleanup_stats(db: AsyncSession = Depends(get_db)):
+    """Obtiene estadísticas de la base de datos"""
+    stats = await CleanupService.get_database_stats(db)
+    return stats
+
+
+@app.get("/api/cleanup/config")
+async def get_cleanup_config():
+    """Obtiene la configuración de retención de datos"""
+    return {
+        "retention_periods": CleanupService.RETENTION_PERIODS,
+        "cleanup_interval_hours": CleanupService.CLEANUP_INTERVAL / 3600
+    }
 
 
 if __name__ == "__main__":
