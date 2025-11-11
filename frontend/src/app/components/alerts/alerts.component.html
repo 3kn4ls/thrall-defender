@@ -1,0 +1,271 @@
+<div class="alerts-container">
+  <!-- Alert Statistics -->
+  <div class="stats-cards">
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-header">
+          <mat-icon>notifications</mat-icon>
+          <span>Total</span>
+        </div>
+        <div class="stat-value">{{ stats.total | number }}</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card critical" [matBadge]="stats.critical" matBadgeColor="warn" [matBadgeHidden]="stats.critical === 0">
+      <mat-card-content>
+        <div class="stat-header">
+          <mat-icon>error</mat-icon>
+          <span>Críticas</span>
+        </div>
+        <div class="stat-value">{{ stats.critical | number }}</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card high">
+      <mat-card-content>
+        <div class="stat-header">
+          <mat-icon>warning</mat-icon>
+          <span>Altas</span>
+        </div>
+        <div class="stat-value">{{ stats.high | number }}</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card unacknowledged" [matBadge]="stats.unacknowledged" matBadgeColor="warn" [matBadgeHidden]="stats.unacknowledged === 0">
+      <mat-card-content>
+        <div class="stat-header">
+          <mat-icon>notification_important</mat-icon>
+          <span>Sin Reconocer</span>
+        </div>
+        <div class="stat-value">{{ stats.unacknowledged | number }}</div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Filters Section -->
+  <mat-card class="filters-card">
+    <mat-card-content>
+      <div class="filters-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Buscar por IP</mat-label>
+          <input matInput [(ngModel)]="searchIP" (ngModelChange)="onFilterChange()" placeholder="192.168.1.1">
+          <mat-icon matPrefix>search</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Severidad</mat-label>
+          <mat-select [(ngModel)]="selectedSeverity" (ngModelChange)="onFilterChange()">
+            <mat-option value="all">Todas</mat-option>
+            <mat-option value="critical">Crítica</mat-option>
+            <mat-option value="high">Alta</mat-option>
+            <mat-option value="medium">Media</mat-option>
+            <mat-option value="low">Baja</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Tipo</mat-label>
+          <mat-select [(ngModel)]="selectedType" (ngModelChange)="onFilterChange()">
+            <mat-option *ngFor="let type of alertTypes" [value]="type">
+              {{ type === 'all' ? 'Todos' : getAlertTypeLabel(type) }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Estado</mat-label>
+          <mat-select [(ngModel)]="selectedStatus" (ngModelChange)="onFilterChange()">
+            <mat-option *ngFor="let status of statusOptions" [value]="status.value">
+              {{ status.label }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-raised-button color="primary" (click)="acknowledgeAll()"
+                [disabled]="stats.unacknowledged === 0"
+                matTooltip="Reconocer todas las alertas no reconocidas">
+          <mat-icon>done_all</mat-icon>
+          Reconocer Todas
+        </button>
+      </div>
+
+      <div class="results-info">
+        <span>Mostrando {{ displayedAlerts.length }} de {{ totalAlerts | number }} alertas</span>
+        <mat-slide-toggle [(ngModel)]="autoRefresh" color="primary">
+          Auto-actualizar (10s)
+        </mat-slide-toggle>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Alerts Table -->
+  <div class="table-container">
+    <table mat-table [dataSource]="displayedAlerts" class="alerts-table">
+      <!-- Timestamp Column -->
+      <ng-container matColumnDef="timestamp">
+        <th mat-header-cell *matHeaderCellDef>Fecha/Hora</th>
+        <td mat-cell *matCellDef="let alert">
+          <div class="timestamp">
+            <div>{{ alert.timestamp | date:'dd/MM/yyyy' }}</div>
+            <div class="time">{{ alert.timestamp | date:'HH:mm:ss' }}</div>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Severity Column -->
+      <ng-container matColumnDef="severity">
+        <th mat-header-cell *matHeaderCellDef>Severidad</th>
+        <td mat-cell *matCellDef="let alert">
+          <mat-chip [style.background-color]="getSeverityColor(alert.severity)"
+                    [style.color]="'white'"
+                    class="severity-chip">
+            <mat-icon>{{ alert.severity === 'critical' ? 'error' : 'warning' }}</mat-icon>
+            {{ alert.severity | uppercase }}
+          </mat-chip>
+        </td>
+      </ng-container>
+
+      <!-- Type Column -->
+      <ng-container matColumnDef="type">
+        <th mat-header-cell *matHeaderCellDef>Tipo</th>
+        <td mat-cell *matCellDef="let alert">
+          <div class="type-cell">
+            <mat-icon>{{ getAlertTypeIcon(alert.alert_type) }}</mat-icon>
+            <span>{{ getAlertTypeLabel(alert.alert_type) }}</span>
+          </div>
+        </td>
+      </ng-container>
+
+      <!-- Source IP Column -->
+      <ng-container matColumnDef="source">
+        <th mat-header-cell *matHeaderCellDef>IP Origen</th>
+        <td mat-cell *matCellDef="let alert">
+          <code class="ip-address">{{ alert.source_ip }}</code>
+        </td>
+      </ng-container>
+
+      <!-- Port Column -->
+      <ng-container matColumnDef="port">
+        <th mat-header-cell *matHeaderCellDef>Puerto</th>
+        <td mat-cell *matCellDef="let alert">
+          <span *ngIf="alert.destination_port">{{ alert.destination_port }}</span>
+          <span *ngIf="!alert.destination_port" class="na">N/A</span>
+        </td>
+      </ng-container>
+
+      <!-- Description Column -->
+      <ng-container matColumnDef="description">
+        <th mat-header-cell *matHeaderCellDef>Descripción</th>
+        <td mat-cell *matCellDef="let alert">
+          <div class="description">{{ alert.description }}</div>
+        </td>
+      </ng-container>
+
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Acciones</th>
+        <td mat-cell *matCellDef="let alert">
+          <div class="actions">
+            <button mat-icon-button
+                    *ngIf="!alert.acknowledged"
+                    (click)="acknowledgeAlert(alert.id)"
+                    matTooltip="Reconocer alerta"
+                    color="primary">
+              <mat-icon>check_circle</mat-icon>
+            </button>
+            <mat-icon *ngIf="alert.acknowledged"
+                      class="acknowledged-icon"
+                      matTooltip="Ya reconocida">
+              check_circle
+            </mat-icon>
+            <button mat-icon-button
+                    (click)="loadSuspectPackets(alert)"
+                    matTooltip="Ver paquetes sospechosos"
+                    color="accent">
+              <mat-icon>analytics</mat-icon>
+            </button>
+          </div>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <!-- Pagination -->
+    <mat-paginator
+      [length]="totalAlerts"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="[10, 20, 50, 100]"
+      [pageIndex]="pageIndex"
+      (page)="onPageChange($event)"
+      showFirstLastButtons>
+    </mat-paginator>
+  </div>
+
+  <!-- Suspect Packets Analysis Panel -->
+  <div *ngFor="let alert of displayedAlerts" class="packets-panel">
+    <mat-expansion-panel *ngIf="suspectPackets[alert.id]">
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          <mat-icon>analytics</mat-icon>
+          Paquetes Sospechosos de {{ alert.source_ip }}
+        </mat-panel-title>
+        <mat-panel-description>
+          {{ suspectPackets[alert.id].length }} paquetes encontrados (±1 min de la alerta)
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+
+      <div class="packets-table-container">
+        <table mat-table [dataSource]="suspectPackets[alert.id]" class="packets-table">
+          <ng-container matColumnDef="timestamp">
+            <th mat-header-cell *matHeaderCellDef>Hora</th>
+            <td mat-cell *matCellDef="let packet">
+              {{ packet.timestamp | date:'HH:mm:ss.SSS' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="protocol">
+            <th mat-header-cell *matHeaderCellDef>Protocolo</th>
+            <td mat-cell *matCellDef="let packet">
+              <mat-chip class="protocol-chip">{{ packet.protocol }}</mat-chip>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="destination">
+            <th mat-header-cell *matHeaderCellDef>Destino</th>
+            <td mat-cell *matCellDef="let packet">
+              <code>{{ packet.destination_ip }}:{{ packet.destination_port }}</code>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="size">
+            <th mat-header-cell *matHeaderCellDef>Tamaño</th>
+            <td mat-cell *matCellDef="let packet">
+              {{ packet.packet_size }} bytes
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="flags">
+            <th mat-header-cell *matHeaderCellDef>Flags</th>
+            <td mat-cell *matCellDef="let packet">
+              <code *ngIf="packet.flags">{{ packet.flags }}</code>
+              <span *ngIf="!packet.flags" class="na">N/A</span>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="['timestamp', 'protocol', 'destination', 'size', 'flags']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['timestamp', 'protocol', 'destination', 'size', 'flags'];"></tr>
+        </table>
+      </div>
+    </mat-expansion-panel>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="displayedAlerts.length === 0 && !loading" class="empty-state">
+    <mat-icon>notifications_off</mat-icon>
+    <h3>No hay alertas</h3>
+    <p *ngIf="selectedStatus === 'unacknowledged'">¡Todas las alertas han sido reconocidas!</p>
+    <p *ngIf="selectedStatus !== 'unacknowledged'">No se encontraron alertas con los filtros aplicados.</p>
+  </div>
+</div>
