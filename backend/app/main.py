@@ -11,6 +11,7 @@ from . import models, schemas
 from .database import init_db, get_db, async_session_maker
 from .services import NetworkService
 from .firewall_service import FirewallService
+from .ddos_service import DDoSService
 from .packet_capture import PacketCapture
 
 # Configurar logging
@@ -33,6 +34,7 @@ async def lifespan(app: FastAPI):
     # Inicializar firewall
     async with async_session_maker() as db:
         await FirewallService.initialize(db)
+        await DDoSService.initialize(db)
 
     # Iniciar captura de paquetes
     global packet_capture
@@ -72,6 +74,10 @@ async def handle_packet(packet_data: dict):
     """Maneja un paquete capturado"""
     try:
         async with async_session_maker() as db:
+            # Analizar para DDoS
+            await DDoSService.analyze_packet(db, packet_data)
+
+            # Guardar paquete
             packet = await NetworkService.save_packet(db, packet_data)
 
             # Enviar a todos los websockets conectados
@@ -498,6 +504,82 @@ async def create_policy(
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ========== DDoS Protection ==========
+
+@app.get("/api/ddos/config", response_model=schemas.DDoSConfig)
+async def get_ddos_config(db: AsyncSession = Depends(get_db)):
+    """Obtiene configuración de protección DDoS"""
+    return await DDoSService.get_default_config(db)
+
+
+@app.patch("/api/ddos/config/{config_id}", response_model=schemas.DDoSConfig)
+async def update_ddos_config(
+    config_id: int,
+    config_update: schemas.DDoSConfigUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Actualiza configuración de protección DDoS"""
+    try:
+        updates = config_update.dict(exclude_unset=True)
+        return await DDoSService.update_config(db, config_id, updates)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/api/ddos/attacks/active", response_model=List[schemas.DDoSAttack])
+async def get_active_ddos_attacks(db: AsyncSession = Depends(get_db)):
+    """Obtiene ataques DDoS activos"""
+    return await DDoSService.get_active_attacks(db)
+
+
+@app.get("/api/ddos/attacks/history", response_model=List[schemas.DDoSAttack])
+async def get_ddos_attack_history(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    ip: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Obtiene historial de ataques DDoS"""
+    return await DDoSService.get_attack_history(db, skip, limit, ip)
+
+
+@app.get("/api/ddos/stats", response_model=schemas.DDoSStats)
+async def get_ddos_statistics(db: AsyncSession = Depends(get_db)):
+    """Obtiene estadísticas de DDoS"""
+    return await DDoSService.get_ddos_statistics(db)
+
+
+@app.get("/api/ddos/metrics", response_model=List[schemas.DDoSMetrics])
+async def get_ddos_metrics(ip: Optional[str] = None):
+    """Obtiene métricas en tiempo real de tráfico"""
+    return DDoSService.get_real_time_metrics(ip)
+
+
+@app.post("/api/ddos/mitigate")
+async def mitigate_ddos_attack(
+    request: schemas.MitigateIPRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Mitiga manualmente un ataque DDoS"""
+    success = await DDoSService.mitigate_attack(
+        db,
+        request.ip_address,
+        request.attack_type
+    )
+
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to mitigate attack")
+
+    return {"status": "mitigated", "ip_address": request.ip_address}
+
+
+@app.post("/api/ddos/attacks/{ip}/end")
+async def end_ddos_attack(ip: str, db: AsyncSession = Depends(get_db)):
+    """Marca un ataque DDoS como finalizado"""
+    await DDoSService.end_attack(db, ip)
+    return {"status": "ended", "ip_address": ip}
 
 
 if __name__ == "__main__":

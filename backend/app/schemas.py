@@ -193,3 +193,92 @@ class BlockedIP(BaseModel):
     packets: int
     bytes: int
     rule_number: str
+
+
+# ========== DDoS Protection Schemas ==========
+
+class DDoSConfigBase(BaseModel):
+    name: str
+    enabled: bool = True
+    pps_threshold: int = Field(default=100, ge=10, le=10000)
+    syn_threshold: int = Field(default=50, ge=5, le=1000)
+    udp_threshold: int = Field(default=200, ge=10, le=5000)
+    icmp_threshold: int = Field(default=50, ge=5, le=1000)
+    auto_mitigate: bool = True
+    mitigation_duration: int = Field(default=3600, ge=60, le=86400)
+    alert_threshold: int = Field(default=80, ge=50, le=100)
+
+
+class DDoSConfigCreate(DDoSConfigBase):
+    pass
+
+
+class DDoSConfigUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    pps_threshold: Optional[int] = Field(default=None, ge=10, le=10000)
+    syn_threshold: Optional[int] = Field(default=None, ge=5, le=1000)
+    udp_threshold: Optional[int] = Field(default=None, ge=10, le=5000)
+    icmp_threshold: Optional[int] = Field(default=None, ge=5, le=1000)
+    auto_mitigate: Optional[bool] = None
+    mitigation_duration: Optional[int] = Field(default=None, ge=60, le=86400)
+    alert_threshold: Optional[int] = Field(default=None, ge=50, le=100)
+
+
+class DDoSConfig(DDoSConfigBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DDoSAttackBase(BaseModel):
+    source_ip: str
+    attack_type: str
+    severity: str
+    packets_per_second: float
+    bytes_per_second: float
+
+
+class DDoSAttackCreate(DDoSAttackBase):
+    metrics: Optional[str] = None
+
+
+class DDoSAttack(DDoSAttackBase):
+    id: int
+    timestamp: datetime
+    duration_seconds: Optional[int] = None
+    mitigated: bool
+    ended_at: Optional[datetime] = None
+    metrics: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class DDoSMetrics(BaseModel):
+    """Métricas de tráfico para una IP"""
+    ip: str
+    packets_per_second: float
+    packets_per_minute: int
+    bytes_per_second: float
+    syn_rate: float
+    udp_rate: float
+    icmp_rate: float
+    total_bytes: int
+
+
+class DDoSStats(BaseModel):
+    """Estadísticas globales de DDoS"""
+    active_attacks: int
+    total_attacks_today: int
+    mitigated_ips: int
+    top_attackers: list[DDoSMetrics]
+    attack_types_distribution: dict
+
+
+class MitigateIPRequest(BaseModel):
+    ip_address: str
+    attack_type: str
+    reason: Optional[str] = "DDoS attack detected"

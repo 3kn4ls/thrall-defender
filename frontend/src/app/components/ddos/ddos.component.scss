@@ -1,0 +1,46 @@
+.ddos-protection {
+  h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+  }
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  text-align: center;
+
+  .stat-value {
+    font-size: 2.5em;
+    font-weight: 300;
+    margin: 10px 0;
+  }
+
+  .stat-label {
+    color: rgba(0, 0, 0, 0.54);
+    font-size: 0.85em;
+    text-transform: uppercase;
+  }
+}
+
+.no-data {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+  }
+}
+
+mat-form-field {
+  width: auto;
+  min-width: 150px;
+}

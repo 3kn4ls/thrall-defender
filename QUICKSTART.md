@@ -220,6 +220,68 @@ La pestaña **"Firewall"** te permite:
 - Añade tu IP a la whitelist antes de habilitar auto-bloqueo
 - Los bloqueos se aplican a nivel de iptables del sistema
 
+### 5. Configurar Protección DDoS 🛡️
+
+La pestaña **"Protección DDoS"** ofrece detección y mitigación automática de ataques:
+
+#### Ver Ataques Activos
+```
+1. Ir a pestaña "Protección DDoS"
+2. Ver estadísticas principales:
+   - Ataques activos en este momento
+   - Total de ataques detectados hoy
+   - IPs mitigadas actualmente
+3. En la sub-pestaña "Ataques Activos":
+   - Lista de ataques en curso con severidad
+   - Tipo de ataque (SYN Flood, UDP Flood, ICMP Flood, Tráfico Alto)
+   - Paquetes por segundo
+   - Botón para mitigar manualmente
+```
+
+#### Top Atacantes en Tiempo Real
+```
+1. Ir a "Top Atacantes"
+2. Ver las IPs con más tráfico:
+   - Paquetes por segundo totales
+   - Tasa de SYN/s
+   - Tasa de UDP/s
+   - Tasa de ICMP/s
+3. Útil para identificar patrones antes de que se conviertan en ataques
+```
+
+#### Configurar Umbrales y Mitigación Automática
+```
+1. Ir a "Configuración"
+2. Habilitar/deshabilitar protección DDoS
+3. Ajustar umbrales de detección:
+   - Paquetes/segundo (default: 100)
+   - SYN/segundo (default: 50)
+   - UDP/segundo (default: 200)
+   - ICMP/segundo (default: 50)
+4. Configurar mitigación automática:
+   - ✅ Habilitar auto-mitigación
+   - ⏱️ Duración de mitigación (60-86400 segundos)
+5. Guardar configuración
+```
+
+#### Cómo Funciona la Mitigación
+```
+Cuando se detecta un ataque:
+1. Se registra en la base de datos con severidad
+2. Se crea una alerta automática
+3. Si auto-mitigación está habilitada:
+   - Se aplica rate limiting con iptables hashlimit
+   - Limita la tasa de paquetes desde la IP atacante
+   - Se mantiene durante el tiempo configurado
+4. Aparece en "Ataques Activos" con estado "Mitigado"
+```
+
+**💡 Recomendaciones**:
+- Ajusta los umbrales según tu tráfico normal
+- Habilita auto-mitigación para respuesta inmediata
+- Monitoriza "Top Atacantes" para detectar patrones
+- Los umbrales muy bajos pueden generar falsos positivos
+
 ## 🆘 Problemas Comunes
 
 ### Backend no captura paquetes

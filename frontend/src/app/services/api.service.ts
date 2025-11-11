@@ -12,7 +12,11 @@ import {
   BlockingPolicy,
   FirewallLog,
   FirewallStats,
-  BlockedIP
+  BlockedIP,
+  DDoSConfig,
+  DDoSAttack,
+  DDoSMetrics,
+  DDoSStats
 } from '../models/packet.model';
 
 @Injectable({
@@ -165,5 +169,54 @@ export class ApiService {
 
   updatePolicy(id: number, policy: Partial<BlockingPolicy>): Observable<BlockingPolicy> {
     return this.http.patch<BlockingPolicy>(`${this.apiUrl}/policies/${id}`, policy);
+  }
+
+  // DDoS Protection
+  getDDoSConfig(): Observable<DDoSConfig> {
+    return this.http.get<DDoSConfig>(`${this.apiUrl}/ddos/config`);
+  }
+
+  updateDDoSConfig(id: number, config: Partial<DDoSConfig>): Observable<DDoSConfig> {
+    return this.http.patch<DDoSConfig>(`${this.apiUrl}/ddos/config/${id}`, config);
+  }
+
+  getActiveDDoSAttacks(): Observable<DDoSAttack[]> {
+    return this.http.get<DDoSAttack[]>(`${this.apiUrl}/ddos/attacks/active`);
+  }
+
+  getDDoSAttackHistory(skip: number = 0, limit: number = 100, ip?: string): Observable<DDoSAttack[]> {
+    let params = new HttpParams()
+      .set('skip', skip.toString())
+      .set('limit', limit.toString());
+
+    if (ip) {
+      params = params.set('ip', ip);
+    }
+
+    return this.http.get<DDoSAttack[]>(`${this.apiUrl}/ddos/attacks/history`, { params });
+  }
+
+  getDDoSStats(): Observable<DDoSStats> {
+    return this.http.get<DDoSStats>(`${this.apiUrl}/ddos/stats`);
+  }
+
+  getDDoSMetrics(ip?: string): Observable<DDoSMetrics[]> {
+    let params = new HttpParams();
+    if (ip) {
+      params = params.set('ip', ip);
+    }
+    return this.http.get<DDoSMetrics[]>(`${this.apiUrl}/ddos/metrics`, { params });
+  }
+
+  mitigateDDoSAttack(ipAddress: string, attackType: string, reason?: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/ddos/mitigate`, {
+      ip_address: ipAddress,
+      attack_type: attackType,
+      reason
+    });
+  }
+
+  endDDoSAttack(ip: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/ddos/attacks/${ip}/end`, {});
   }
 }

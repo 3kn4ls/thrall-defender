@@ -97,3 +97,52 @@ export interface BlockedIP {
   bytes: number;
   rule_number: string;
 }
+
+// DDoS Protection Models
+export interface DDoSConfig {
+  id: number;
+  name: string;
+  enabled: boolean;
+  pps_threshold: number;
+  syn_threshold: number;
+  udp_threshold: number;
+  icmp_threshold: number;
+  auto_mitigate: boolean;
+  mitigation_duration: number;
+  alert_threshold: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DDoSAttack {
+  id: number;
+  timestamp: string;
+  source_ip: string;
+  attack_type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  packets_per_second: number;
+  bytes_per_second: number;
+  duration_seconds?: number;
+  mitigated: boolean;
+  ended_at?: string;
+  metrics?: string;
+}
+
+export interface DDoSMetrics {
+  ip: string;
+  packets_per_second: number;
+  packets_per_minute: number;
+  bytes_per_second: number;
+  syn_rate: number;
+  udp_rate: number;
+  icmp_rate: number;
+  total_bytes: number;
+}
+
+export interface DDoSStats {
+  active_attacks: number;
+  total_attacks_today: number;
+  mitigated_ips: number;
+  top_attackers: DDoSMetrics[];
+  attack_types_distribution: { [key: string]: number };
+}
