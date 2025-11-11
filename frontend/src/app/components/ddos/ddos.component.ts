@@ -64,8 +64,10 @@ export class DdosComponent implements OnInit, OnDestroy {
   config?: DDoSConfig;
   stats?: DDoSStats;
   activeAttacks: DDoSAttack[] = [];
+  topAttackers: DDoSMetrics[] = [];
   loading = true;
   attackColumns = ['timestamp', 'source_ip', 'attack_type', 'severity', 'pps', 'actions'];
+  metricsColumns = ['ip', 'pps', 'syn_rate', 'udp_rate', 'icmp_rate'];
   geoRuleColumns = ['country', 'action', 'priority', 'enabled', 'actions'];
   geoStatsColumns = ['country', 'attacks', 'blocked', 'packets'];
   availableCountries = [
@@ -164,7 +166,10 @@ export class DdosComponent implements OnInit, OnDestroy {
 
   loadStats(): void {
     this.apiService.getDDoSStats().subscribe({
-      next: (stats) => this.stats = stats,
+      next: (stats) => {
+        this.stats = stats;
+        this.topAttackers = stats.top_attackers || [];
+      },
       error: (error) => console.error('Error:', error)
     });
   }
