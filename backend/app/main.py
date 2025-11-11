@@ -1,3 +1,4 @@
+from sqlalchemy import Integer
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,8 @@ from .database import init_db, get_db, async_session_maker
 from .services import NetworkService
 from .firewall_service import FirewallService
 from .ddos_service import DDoSService
+from .ddos_advanced_service import DDoSAdvancedService
+from .cleanup_service import CleanupService
 from .packet_capture import PacketCapture
 
 # Configurar logging
@@ -22,6 +25,7 @@ logger = logging.getLogger(__name__)
 packet_capture = None
 active_websockets = set()
 db_semaphore = asyncio.Semaphore(10)  # Limita operaciones concurrentes de DB
+cleanup_task = None
 
 
 @asynccontextmanager
@@ -32,10 +36,11 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database initialized")
 
-    # Inicializar firewall
+    # Inicializar firewall y protección DDoS
     async with async_session_maker() as db:
         await FirewallService.initialize(db)
         await DDoSService.initialize(db)
+        await DDoSAdvancedService.initialize_defaults(db)
 
     # Iniciar captura de paquetes
     global packet_capture
@@ -46,11 +51,22 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(packet_capture.start_async())
     logger.info("Packet capture started")
 
+    # Iniciar cleanup task
+    global cleanup_task
+    cleanup_task = asyncio.create_task(CleanupService.start_cleanup_task())
+    logger.info("Database cleanup task started")
+
     yield
 
     # Shutdown
     if packet_capture:
         packet_capture.stop()
+    if cleanup_task:
+        cleanup_task.cancel()
+        try:
+            await cleanup_task
+        except asyncio.CancelledError:
+            pass
     logger.info("Thrall Defender Backend stopped")
 
 
@@ -584,6 +600,184 @@ async def end_ddos_attack(ip: str, db: AsyncSession = Depends(get_db)):
     return {"status": "ended", "ip_address": ip}
 
 
+# ============================================================================
+# CLEANUP ENDPOINTS
+# ============================================================================
+
+@app.post("/api/cleanup/run")
+async def run_cleanup(db: AsyncSession = Depends(get_db)):
+    """Ejecuta limpieza manual de la base de datos"""
+    stats = await CleanupService.cleanup_old_records(db)
+    return stats
+
+
+@app.get("/api/cleanup/stats")
+async def get_cleanup_stats(db: AsyncSession = Depends(get_db)):
+    """Obtiene estadísticas de la base de datos"""
+    stats = await CleanupService.get_database_stats(db)
+    return stats
+
+
+@app.get("/api/cleanup/config")
+async def get_cleanup_config():
+    """Obtiene la configuración de retención de datos"""
+    return {
+        "retention_periods": CleanupService.RETENTION_PERIODS,
+        "cleanup_interval_hours": CleanupService.CLEANUP_INTERVAL / 3600
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+# ============================================================================
+# ADVANCED DDOS ENDPOINTS
+# ============================================================================
+
+@app.get("/api/ddos/levels", response_model=List[schemas.DDoSMitigationLevel])
+async def get_mitigation_levels(db: AsyncSession = Depends(get_db)):
+    """Obtiene todos los niveles de mitigación"""
+    from app.ddos_advanced_service import DDoSAdvancedService
+    result = await db.execute(select(models.DDoSMitigationLevel))
+    levels = result.scalars().all()
+    return levels
+
+
+@app.post("/api/ddos/levels/{level_name}/activate")
+async def activate_level(level_name: str, db: AsyncSession = Depends(get_db)):
+    """Activa un nivel de mitigación"""
+    from app.ddos_advanced_service import DDoSAdvancedService
+    success = await DDoSAdvancedService.set_active_level(db, level_name)
+    if not success:
+        raise HTTPException(status_code=404, detail="Level not found")
+    return {"status": "activated", "level": level_name}
+
+
+@app.get("/api/ddos/geo-rules", response_model=List[schemas.DDoSGeoRule])
+async def get_geo_rules(db: AsyncSession = Depends(get_db)):
+    """Obtiene todas las reglas geográficas"""
+    result = await db.execute(
+        select(models.DDoSGeoRule).order_by(models.DDoSGeoRule.priority)
+    )
+    return result.scalars().all()
+
+
+@app.post("/api/ddos/geo-rules", response_model=schemas.DDoSGeoRule)
+async def create_geo_rule(rule: schemas.DDoSGeoRuleCreate, db: AsyncSession = Depends(get_db)):
+    """Crea una nueva regla geográfica"""
+    db_rule = models.DDoSGeoRule(**rule.dict())
+    db.add(db_rule)
+    await db.commit()
+    await db.refresh(db_rule)
+    return db_rule
+
+
+@app.delete("/api/ddos/geo-rules/{rule_id}")
+async def delete_geo_rule(rule_id: int, db: AsyncSession = Depends(get_db)):
+    """Elimina una regla geográfica"""
+    result = await db.execute(
+        select(models.DDoSGeoRule).where(models.DDoSGeoRule.id == rule_id)
+    )
+    rule = result.scalar_one_or_none()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    await db.delete(rule)
+    await db.commit()
+    return {"status": "deleted"}
+
+
+@app.get("/api/ddos/protection-status", response_model=schemas.DDoSProtectionStatus)
+async def get_protection_status(db: AsyncSession = Depends(get_db)):
+    """Obtiene el estado actual de la protección DDoS"""
+    from app.ddos_advanced_service import DDoSAdvancedService
+    from app.geoip_service import GeoIPService
+    
+    # Get active level
+    active_level = await DDoSAdvancedService.get_active_level(db)
+    
+    # Count geo rules
+    result = await db.execute(select(func.count(models.DDoSGeoRule.id)))
+    geo_rules_count = result.scalar()
+    
+    # Count active attacks (last hour)
+    one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+    result = await db.execute(
+        select(func.count(models.DDoSAttack.id)).where(
+            and_(
+                models.DDoSAttack.detected_at >= one_hour_ago,
+                models.DDoSAttack.mitigated == False
+            )
+        )
+    )
+    active_attacks = result.scalar()
+    
+    # Count blocked today
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    result = await db.execute(
+        select(func.count(models.DDoSAttack.id)).where(
+            and_(
+                models.DDoSAttack.detected_at >= today,
+                models.DDoSAttack.mitigated == True
+            )
+        )
+    )
+    blocked_today = result.scalar()
+    
+    # Determine threat level
+    if active_attacks >= 10:
+        threat_level = "critical"
+    elif active_attacks >= 5:
+        threat_level = "high"
+    elif active_attacks >= 2:
+        threat_level = "medium"
+    elif active_attacks >= 1:
+        threat_level = "low"
+    else:
+        threat_level = "none"
+    
+    return {
+        "protection_enabled": active_level is not None,
+        "active_level": active_level,
+        "geo_rules_count": geo_rules_count,
+        "active_attacks_count": active_attacks,
+        "total_attacks_blocked_today": blocked_today,
+        "current_threat_level": threat_level,
+        "geoip_available": GeoIPService._reader is not None
+    }
+
+
+@app.get("/api/ddos/geo-stats")
+async def get_geo_stats(db: AsyncSession = Depends(get_db), limit: int = 10):
+    """Obtiene estadísticas de ataques por país"""
+    # Get attacks from last 24 hours grouped by country
+    yesterday = datetime.utcnow() - timedelta(hours=24)
+    
+    result = await db.execute(
+        select(
+            models.DDoSAttack.country_code,
+            models.DDoSAttack.country_name,
+            func.count(models.DDoSAttack.id).label('attack_count'),
+            func.sum(func.cast(models.DDoSAttack.mitigated, Integer)).label('blocked_count'),
+            func.sum(models.DDoSAttack.packets_per_second).label('total_packets')
+        )
+        .where(models.DDoSAttack.detected_at >= yesterday)
+        .where(models.DDoSAttack.country_code.isnot(None))
+        .group_by(models.DDoSAttack.country_code, models.DDoSAttack.country_name)
+        .order_by(desc('attack_count'))
+        .limit(limit)
+    )
+    
+    stats = []
+    for row in result:
+        stats.append({
+            "country_code": row.country_code,
+            "country_name": row.country_name,
+            "attack_count": row.attack_count,
+            "blocked_count": row.blocked_count or 0,
+            "total_packets": int(row.total_packets or 0)
+        })
+    
+    return stats
+

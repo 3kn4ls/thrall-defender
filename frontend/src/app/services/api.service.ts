@@ -13,6 +13,10 @@ import {
   FirewallLog,
   FirewallStats,
   BlockedIP,
+  DDoSMitigationLevel,
+  DDoSGeoRule,
+  DDoSProtectionStatus,
+  DDoSGeoStats,
   DDoSConfig,
   DDoSAttack,
   DDoSMetrics,
@@ -218,5 +222,35 @@ export class ApiService {
 
   endDDoSAttack(ip: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/ddos/attacks/${ip}/end`, {});
+  }
+}
+
+  // Advanced DDoS Methods
+  getMitigationLevels(): Observable<DDoSMitigationLevel[]> {
+    return this.http.get<DDoSMitigationLevel[]>(`${this.apiUrl}/ddos/levels`);
+  }
+
+  activateMitigationLevel(levelName: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/ddos/levels/${levelName}/activate`, {});
+  }
+
+  getGeoRules(): Observable<DDoSGeoRule[]> {
+    return this.http.get<DDoSGeoRule[]>(`${this.apiUrl}/ddos/geo-rules`);
+  }
+
+  createGeoRule(rule: any): Observable<DDoSGeoRule> {
+    return this.http.post<DDoSGeoRule>(`${this.apiUrl}/ddos/geo-rules`, rule);
+  }
+
+  deleteGeoRule(ruleId: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/ddos/geo-rules/${ruleId}`);
+  }
+
+  getDDoSProtectionStatus(): Observable<DDoSProtectionStatus> {
+    return this.http.get<DDoSProtectionStatus>(`${this.apiUrl}/ddos/protection-status`);
+  }
+
+  getDDoSGeoStats(): Observable<DDoSGeoStats[]> {
+    return this.http.get<DDoSGeoStats[]>(`${this.apiUrl}/ddos/geo-stats`);
   }
 }
