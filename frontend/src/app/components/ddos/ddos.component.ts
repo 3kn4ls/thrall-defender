@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTableModule } from '@angular/material/table';
@@ -35,6 +35,7 @@ import {
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    FormsModule,
     MatCardModule,
     MatTabsModule,
     MatTableModule,
@@ -64,7 +65,7 @@ export class DdosComponent implements OnInit, OnDestroy {
   stats?: DDoSStats;
   activeAttacks: DDoSAttack[] = [];
   loading = true;
-  attackColumns = ['timestamp', 'ip', 'type', 'severity', 'pps', 'mitigated', 'actions'];
+  attackColumns = ['timestamp', 'source_ip', 'attack_type', 'severity', 'pps', 'actions'];
   geoRuleColumns = ['country', 'action', 'priority', 'enabled', 'actions'];
   geoStatsColumns = ['country', 'attacks', 'blocked', 'packets'];
   availableCountries = [
@@ -219,8 +220,8 @@ export class DdosComponent implements OnInit, OnDestroy {
     }
   }
 
-  mitigateAttack(ip: string, attackType: string): void {
-    this.apiService.mitigateDDoSAttack({ ip_address: ip, attack_type: attackType }).subscribe({
+  mitigateAttack(attack: DDoSAttack): void {
+    this.apiService.mitigateDDoSAttack({ ip_address: attack.source_ip, attack_type: attack.attack_type }).subscribe({
       next: () => {
         this.snackBar.open(`Ataque mitigado`, 'OK', { duration: 3000 });
         this.loadActiveAttacks();
@@ -228,6 +229,38 @@ export class DdosComponent implements OnInit, OnDestroy {
       },
       error: () => this.snackBar.open('Error', 'ERROR', { duration: 3000 })
     });
+  }
+
+  endAttack(ip: string): void {
+    this.apiService.endDDoSAttack(ip).subscribe({
+      next: () => {
+        this.snackBar.open('Ataque finalizado', 'OK', { duration: 3000 });
+        this.loadActiveAttacks();
+      },
+      error: () => this.snackBar.open('Error', 'ERROR', { duration: 3000 })
+    });
+  }
+
+  getAttackTypeName(attackType: string): string {
+    const types: { [key: string]: string } = {
+      'syn_flood': 'SYN Flood',
+      'udp_flood': 'UDP Flood',
+      'icmp_flood': 'ICMP Flood',
+      'high_pps': 'Alto PPS'
+    };
+    return types[attackType] || attackType;
+  }
+
+  updateConfig(): void {
+    if (this.config) {
+      this.apiService.updateDDoSConfig(this.config.id, this.config).subscribe({
+        next: () => {
+          this.snackBar.open('Configuración actualizada', 'OK', { duration: 3000 });
+          this.loadConfig();
+        },
+        error: () => this.snackBar.open('Error al actualizar', 'ERROR', { duration: 3000 })
+      });
+    }
   }
 
   getThreatLevelColor(level: string): string {
