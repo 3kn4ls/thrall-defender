@@ -4,17 +4,22 @@ metadata:
   name: thrall-defender-ingress
   namespace: thrall-defender
   annotations:
-    kubernetes.io/ingress.class: traefik
-    traefik.ingress.kubernetes.io/router.entrypoints: web
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.middlewares: kube-system-https-redirect@kubernetescrd,thrall-defender-thrall-defender-stripprefix@kubernetescrd
 spec:
+  ingressClassName: traefik
   rules:
-  - host: thrall-defender.local  # Cambiar por tu dominio o IP
+  - host: mc-s3rv3r.ddns.net
     http:
       paths:
-      - path: /
+      - path: /thrall-defender
         pathType: Prefix
         backend:
           service:
             name: thrall-frontend
             port:
               number: 80
+  tls:
+  - hosts:
+    - mc-s3rv3r.ddns.net
+    secretName: thrall-defender-tls

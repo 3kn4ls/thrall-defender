@@ -15,10 +15,6 @@ spec:
       labels:
         app: thrall-backend
     spec:
-      # hostNetwork permite captura de paquetes de la red del host
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
-
       containers:
       - name: backend
         image: thrall-backend:latest

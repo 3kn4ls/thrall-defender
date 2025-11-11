@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 # Instancia global del capturador
 packet_capture = None
 active_websockets = set()
+db_semaphore = asyncio.Semaphore(10)  # Limita operaciones concurrentes de DB
 
 
 @asynccontextmanager
@@ -66,33 +67,34 @@ app.add_middleware(
 async def handle_packet(packet_data: dict):
     """Maneja un paquete capturado"""
     try:
-        async with async_session_maker() as db:
-            packet = await NetworkService.save_packet(db, packet_data)
+        async with db_semaphore:
+            async with async_session_maker() as db:
+                packet = await NetworkService.save_packet(db, packet_data)
 
-            # Enviar a todos los websockets conectados
-            packet_dict = {
-                "id": packet.id,
-                "timestamp": packet.timestamp.isoformat(),
-                "source_ip": packet.source_ip,
-                "destination_ip": packet.destination_ip,
-                "source_port": packet.source_port,
-                "destination_port": packet.destination_port,
-                "protocol": packet.protocol,
-                "packet_size": packet.packet_size,
-                "is_suspicious": packet.is_suspicious,
-                "is_blocked": packet.is_blocked
-            }
+                # Enviar a todos los websockets conectados
+                packet_dict = {
+                    "id": packet.id,
+                    "timestamp": packet.timestamp.isoformat(),
+                    "source_ip": packet.source_ip,
+                    "destination_ip": packet.destination_ip,
+                    "source_port": packet.source_port,
+                    "destination_port": packet.destination_port,
+                    "protocol": packet.protocol,
+                    "packet_size": packet.packet_size,
+                    "is_suspicious": packet.is_suspicious,
+                    "is_blocked": packet.is_blocked
+                }
 
-            # Enviar a websockets
-            disconnected = set()
-            for ws in active_websockets:
-                try:
-                    await ws.send_json({"type": "packet", "data": packet_dict})
-                except Exception:
-                    disconnected.add(ws)
+                # Enviar a websockets
+                disconnected = set()
+                for ws in active_websockets:
+                    try:
+                        await ws.send_json({"type": "packet", "data": packet_dict})
+                    except Exception:
+                        disconnected.add(ws)
 
-            # Limpiar websockets desconectados
-            active_websockets.difference_update(disconnected)
+                # Limpiar websockets desconectados
+                active_websockets.difference_update(disconnected)
 
     except Exception as e:
         logger.error(f"Error handling packet: {e}")

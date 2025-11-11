@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
-  apiUrl: '/api',
-  wsUrl: `ws://${window.location.host}/ws`
+  apiUrl: '/thrall-defender/api',
+  wsUrl: `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/thrall-defender/ws`
 };
