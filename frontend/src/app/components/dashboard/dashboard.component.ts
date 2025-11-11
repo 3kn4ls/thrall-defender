@@ -15,6 +15,7 @@ import { AlertsComponent } from '../alerts/alerts.component';
 import { IpManagementComponent } from '../ip-management/ip-management.component';
 import { FirewallComponent } from '../firewall/firewall.component';
 import { DdosComponent } from '../ddos/ddos.component';
+import { SettingsComponent } from '../settings/settings.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -29,7 +30,8 @@ import { DdosComponent } from '../ddos/ddos.component';
     AlertsComponent,
     IpManagementComponent,
     FirewallComponent,
-    DdosComponent
+    DdosComponent,
+    SettingsComponent
   ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']

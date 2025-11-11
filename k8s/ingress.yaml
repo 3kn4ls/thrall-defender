@@ -4,14 +4,13 @@ metadata:
   name: thrall-defender-ingress
   namespace: thrall-defender
   annotations:
-    kubernetes.io/ingress.class: traefik
-    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
 spec:
   rules:
-  - host: thrall-defender.local  # Cambiar por tu dominio o IP
-    http:
+  - http:
       paths:
-      - path: /
+      # Frontend - debe ser el último para que no capture las rutas del backend
+      - path: /thrall-defender
         pathType: Prefix
         backend:
           service:

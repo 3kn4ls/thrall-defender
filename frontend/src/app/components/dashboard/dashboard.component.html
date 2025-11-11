@@ -1,11 +1,11 @@
 <div class="container">
-  <div style="margin: 20px 0; display: flex; align-items: center; justify-content: space-between;">
-    <h1 style="margin: 0;">Dashboard de Monitorización</h1>
+  <div style="margin: 20px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+    <h1 style="margin: 0; font-size: clamp(1.5rem, 4vw, 2.5rem);">Dashboard de Monitorización</h1>
     <div style="display: flex; align-items: center;">
       <div [style.width.px]="12" [style.height.px]="12" [style.border-radius.px]="6"
            [style.background-color]="isConnected ? '#4caf50' : '#f44336'"
            style="margin-right: 8px;"></div>
-      <span style="font-size: 14px; color: rgba(0,0,0,0.6);">
+      <span style="font-size: clamp(12px, 2vw, 14px); color: rgba(0,0,0,0.6);">
         {{ isConnected ? 'Conectado' : 'Desconectado' }}
       </span>
     </div>
@@ -99,34 +99,40 @@
   <!-- Tabs con contenido detallado -->
   <mat-card style="margin-top: 20px;">
     <mat-card-content>
-      <mat-tab-group>
-        <mat-tab label="Tráfico en Tiempo Real">
-          <div style="padding: 20px;">
+      <mat-tab-group dynamicHeight>
+        <mat-tab label="Tráfico">
+          <div style="padding: 20px; padding: clamp(8px, 2vw, 20px);">
             <app-packet-list [packets]="recentPackets"></app-packet-list>
           </div>
         </mat-tab>
 
         <mat-tab label="Alertas">
-          <div style="padding: 20px;">
+          <div style="padding: clamp(8px, 2vw, 20px);">
             <app-alerts></app-alerts>
           </div>
         </mat-tab>
 
-        <mat-tab label="Gestión de IPs">
-          <div style="padding: 20px;">
+        <mat-tab label="IPs">
+          <div style="padding: clamp(8px, 2vw, 20px);">
             <app-ip-management></app-ip-management>
           </div>
         </mat-tab>
 
         <mat-tab label="Firewall">
-          <div style="padding: 20px;">
+          <div style="padding: clamp(8px, 2vw, 20px);">
             <app-firewall></app-firewall>
           </div>
         </mat-tab>
 
-        <mat-tab label="Protección DDoS">
-          <div style="padding: 20px;">
+        <mat-tab label="DDoS">
+          <div style="padding: clamp(8px, 2vw, 20px);">
             <app-ddos></app-ddos>
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Configuración">
+          <div style="padding: clamp(8px, 2vw, 20px);">
+            <app-settings></app-settings>
           </div>
         </mat-tab>
       </mat-tab-group>

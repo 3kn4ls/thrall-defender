@@ -5,9 +5,10 @@ Herramienta de monitorización de tráfico de red en tiempo real para detectar a
 ## 🏗️ Arquitectura
 
 - **Backend**: Python + FastAPI + Scapy (captura de tráfico)
-- **Frontend**: Angular 19 + Material Design
-- **Base de datos**: SQLite
+- **Frontend**: Angular 19 + Material Design + PWA
+- **Base de datos**: SQLite con soporte async
 - **Despliegue**: Kubernetes (k3s) en Raspberry Pi 5
+- **Acceso**: `/thrall-defender/` path con Ingress
 
 ## 📁 Estructura del Proyecto
 
@@ -61,12 +62,41 @@ thrall-defender/
 ### Alertas y Gestión
 - ✅ Sistema de alertas con niveles de severidad
 - ✅ Lista blanca/negra de IPs
+- ✅ Configuración completa desde la interfaz web
+- ✅ Exportar/importar configuración
+
+### Interfaz y Experiencia
+- 📱 **Progressive Web App (PWA)** - Instalable en cualquier dispositivo
+- 📱 **Diseño Responsive** - Optimizado para móviles, tablets y escritorio
+- 📱 **Modo Offline** - Service Worker con caché inteligente
+- 📱 **Configuración Web** - Todo configurable desde la interfaz
+- 📱 **Interfaz Amigable** - Material Design con temas personalizables
 - ✅ Gestión visual de firewall desde el dashboard
 - ✅ Detección de port scanning
 
 ## 📦 Despliegue Rápido
 
-Ver [docs/deployment.md](./docs/deployment.md) para instrucciones detalladas de despliegue en Raspberry Pi 5 con k3s.
+### Instalación Automática en Raspberry Pi 5 + k3s
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/3kn4ls/thrall-defender.git
+cd thrall-defender
+
+# 2. Ejecutar el script de instalación
+chmod +x scripts/install-k3s.sh
+./scripts/install-k3s.sh
+
+# 3. Acceder a la aplicación
+# http://<IP-de-tu-Raspberry>/thrall-defender/
+```
+
+**📖 Guía Completa**: Ver [docs/INSTALACION_K3S.md](./docs/INSTALACION_K3S.md) para instrucciones paso a paso
+
+### Otros Métodos de Despliegue
+
+- **Docker Compose**: Ver [QUICKSTART.md](./QUICKSTART.md)
+- **Desarrollo Local**: Ver [QUICKSTART.md](./QUICKSTART.md#opción-3-desarrollo-local-sin-docker)
 
 ## 🔐 Seguridad
 

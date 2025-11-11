@@ -1,0 +1,247 @@
+<div class="settings-container">
+  <h2><mat-icon>settings</mat-icon> Configuración de la Aplicación</h2>
+
+  <form [formGroup]="settingsForm" (ngSubmit)="onSave()">
+    <mat-tab-group>
+      <!-- Backend Configuration -->
+      <mat-tab label="Conexión">
+        <div class="tab-content">
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title>Configuración del Backend</mat-card-title>
+              <mat-card-subtitle>URL y parámetros de conexión con el servidor</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="form-grid">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>URL del Backend (HTTP)</mat-label>
+                  <input matInput formControlName="backendUrl" placeholder="http://localhost:8000">
+                  <mat-icon matPrefix>http</mat-icon>
+                  <mat-hint>URL base para las peticiones HTTP</mat-hint>
+                  <mat-error *ngIf="settingsForm.get('backendUrl')?.hasError('required')">
+                    La URL es requerida
+                  </mat-error>
+                  <mat-error *ngIf="settingsForm.get('backendUrl')?.hasError('pattern')">
+                    URL inválida (debe comenzar con http:// o https://)
+                  </mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>URL WebSocket</mat-label>
+                  <input matInput formControlName="wsUrl" placeholder="ws://localhost:8000">
+                  <mat-icon matPrefix>sync_alt</mat-icon>
+                  <mat-hint>URL para conexión en tiempo real</mat-hint>
+                  <mat-error *ngIf="settingsForm.get('wsUrl')?.hasError('required')">
+                    La URL WebSocket es requerida
+                  </mat-error>
+                  <mat-error *ngIf="settingsForm.get('wsUrl')?.hasError('pattern')">
+                    URL inválida (debe comenzar con ws:// o wss://)
+                  </mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Timeout (ms)</mat-label>
+                  <input matInput type="number" formControlName="timeout" min="5000" max="60000" step="1000">
+                  <mat-icon matPrefix>timer</mat-icon>
+                  <mat-hint>Tiempo máximo de espera para peticiones (5000-60000 ms)</mat-hint>
+                  <mat-error *ngIf="settingsForm.get('timeout')?.hasError('min') || settingsForm.get('timeout')?.hasError('max')">
+                    El timeout debe estar entre 5000 y 60000 ms
+                  </mat-error>
+                </mat-form-field>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <!-- UI Configuration -->
+      <mat-tab label="Interfaz">
+        <div class="tab-content">
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title>Configuración de la Interfaz</mat-card-title>
+              <mat-card-subtitle>Personaliza la apariencia y comportamiento</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="form-grid">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Intervalo de Actualización</mat-label>
+                  <input matInput type="number" formControlName="refreshInterval" min="1000" max="60000" step="1000">
+                  <mat-icon matPrefix>refresh</mat-icon>
+                  <mat-hint>Frecuencia de actualización automática (ms)</mat-hint>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Tema</mat-label>
+                  <mat-select formControlName="theme">
+                    <mat-option value="light">Claro</mat-option>
+                    <mat-option value="dark">Oscuro</mat-option>
+                    <mat-option value="auto">Automático (del sistema)</mat-option>
+                  </mat-select>
+                  <mat-icon matPrefix>palette</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Densidad</mat-label>
+                  <mat-select formControlName="density">
+                    <mat-option value="comfortable">Cómoda</mat-option>
+                    <mat-option value="compact">Compacta</mat-option>
+                  </mat-select>
+                  <mat-icon matPrefix>view_compact</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Idioma</mat-label>
+                  <mat-select formControlName="language">
+                    <mat-option value="es">Español</mat-option>
+                    <mat-option value="en">English</mat-option>
+                  </mat-select>
+                  <mat-icon matPrefix>language</mat-icon>
+                </mat-form-field>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <!-- Notifications -->
+      <mat-tab label="Notificaciones">
+        <div class="tab-content">
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title>Notificaciones</mat-card-title>
+              <mat-card-subtitle>Configura qué eventos deseas recibir</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="toggle-list">
+                <div class="toggle-item">
+                  <div class="toggle-info">
+                    <mat-icon>notifications</mat-icon>
+                    <div>
+                      <div class="toggle-title">Habilitar Notificaciones</div>
+                      <div class="toggle-description">Activa las notificaciones del navegador</div>
+                    </div>
+                  </div>
+                  <mat-slide-toggle formControlName="notificationsEnabled"></mat-slide-toggle>
+                </div>
+
+                <mat-divider></mat-divider>
+
+                <div class="toggle-item">
+                  <div class="toggle-info">
+                    <mat-icon>warning</mat-icon>
+                    <div>
+                      <div class="toggle-title">Alertas de Seguridad</div>
+                      <div class="toggle-description">Notificar cuando se detecten alertas críticas</div>
+                    </div>
+                  </div>
+                  <mat-slide-toggle formControlName="alertsNotification"></mat-slide-toggle>
+                </div>
+
+                <mat-divider></mat-divider>
+
+                <div class="toggle-item">
+                  <div class="toggle-info">
+                    <mat-icon>shield</mat-icon>
+                    <div>
+                      <div class="toggle-title">Ataques DDoS</div>
+                      <div class="toggle-description">Notificar cuando se detecten ataques DDoS</div>
+                    </div>
+                  </div>
+                  <mat-slide-toggle formControlName="ddosNotification"></mat-slide-toggle>
+                </div>
+
+                <mat-divider></mat-divider>
+
+                <div class="toggle-item">
+                  <div class="toggle-info">
+                    <mat-icon>block</mat-icon>
+                    <div>
+                      <div class="toggle-title">IPs Bloqueadas</div>
+                      <div class="toggle-description">Notificar cuando se bloquee una IP</div>
+                    </div>
+                  </div>
+                  <mat-slide-toggle formControlName="ipBlockedNotification"></mat-slide-toggle>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
+      <!-- Display Settings -->
+      <mat-tab label="Visualización">
+        <div class="tab-content">
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title>Configuración de Visualización</mat-card-title>
+              <mat-card-subtitle>Personaliza cómo se muestran los datos</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="form-grid">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Paquetes por Página</mat-label>
+                  <input matInput type="number" formControlName="packetsPerPage" min="10" max="200" step="10">
+                  <mat-icon matPrefix>view_list</mat-icon>
+                  <mat-hint>Número de paquetes a mostrar por página (10-200)</mat-hint>
+                </mat-form-field>
+              </div>
+
+              <div class="toggle-list">
+                <div class="toggle-item">
+                  <div class="toggle-info">
+                    <mat-icon>autorenew</mat-icon>
+                    <div>
+                      <div class="toggle-title">Actualización Automática</div>
+                      <div class="toggle-description">Actualizar datos automáticamente</div>
+                    </div>
+                  </div>
+                  <mat-slide-toggle formControlName="autoRefresh"></mat-slide-toggle>
+                </div>
+
+                <mat-divider></mat-divider>
+
+                <div class="toggle-item">
+                  <div class="toggle-info">
+                    <mat-icon>show_chart</mat-icon>
+                    <div>
+                      <div class="toggle-title">Mostrar Gráficos</div>
+                      <div class="toggle-description">Visualizar gráficos estadísticos</div>
+                    </div>
+                  </div>
+                  <mat-slide-toggle formControlName="showCharts"></mat-slide-toggle>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+
+    <!-- Action Buttons -->
+    <div class="actions">
+      <button mat-raised-button type="button" (click)="onReset()">
+        <mat-icon>restore</mat-icon>
+        Restablecer
+      </button>
+
+      <input type="file" #fileInput style="display: none" accept=".json" (change)="onImport($event)">
+      <button mat-raised-button type="button" (click)="fileInput.click()">
+        <mat-icon>file_upload</mat-icon>
+        Importar
+      </button>
+
+      <button mat-raised-button type="button" (click)="onExport()">
+        <mat-icon>file_download</mat-icon>
+        Exportar
+      </button>
+
+      <div class="spacer"></div>
+
+      <button mat-raised-button color="primary" type="submit" [disabled]="!settingsForm.valid">
+        <mat-icon>save</mat-icon>
+        Guardar Cambios
+      </button>
+    </div>
+  </form>
+</div>

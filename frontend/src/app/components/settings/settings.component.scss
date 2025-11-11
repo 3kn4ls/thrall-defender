@@ -1,0 +1,199 @@
+.settings-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    font-size: 28px;
+    color: #3f51b5;
+
+    mat-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+    }
+
+    @media (max-width: 768px) {
+      font-size: 24px;
+
+      mat-icon {
+        font-size: 28px;
+        width: 28px;
+        height: 28px;
+      }
+    }
+  }
+
+  .tab-content {
+    padding: 24px 0;
+
+    @media (max-width: 768px) {
+      padding: 16px 0;
+    }
+  }
+
+  mat-card {
+    margin-bottom: 20px;
+
+    mat-card-header {
+      margin-bottom: 16px;
+    }
+
+    mat-card-title {
+      font-size: 20px;
+      font-weight: 500;
+      color: #3f51b5;
+
+      @media (max-width: 768px) {
+        font-size: 18px;
+      }
+    }
+
+    mat-card-subtitle {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.6);
+      margin-top: 4px;
+
+      @media (max-width: 768px) {
+        font-size: 13px;
+      }
+    }
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .toggle-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+
+    .toggle-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 0;
+
+      @media (max-width: 768px) {
+        padding: 12px 0;
+      }
+
+      .toggle-info {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        flex: 1;
+
+        @media (max-width: 768px) {
+          gap: 12px;
+        }
+
+        mat-icon {
+          color: #3f51b5;
+          margin-top: 4px;
+          flex-shrink: 0;
+        }
+
+        .toggle-title {
+          font-size: 16px;
+          font-weight: 500;
+          color: rgba(0, 0, 0, 0.87);
+          margin-bottom: 4px;
+
+          @media (max-width: 768px) {
+            font-size: 15px;
+          }
+        }
+
+        .toggle-description {
+          font-size: 14px;
+          color: rgba(0, 0, 0, 0.6);
+          line-height: 1.4;
+
+          @media (max-width: 768px) {
+            font-size: 13px;
+          }
+        }
+      }
+
+      mat-slide-toggle {
+        flex-shrink: 0;
+      }
+    }
+
+    mat-divider {
+      margin: 8px 0;
+    }
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid #e0e0e0;
+    flex-wrap: wrap;
+
+    @media (max-width: 768px) {
+      gap: 8px;
+      margin-top: 24px;
+      padding-top: 16px;
+
+      button {
+        flex: 1 1 calc(50% - 4px);
+        min-width: 0;
+
+        &.mat-raised-button.mat-primary {
+          flex: 1 1 100%;
+        }
+      }
+    }
+
+    button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      mat-icon {
+        margin: 0;
+      }
+    }
+  }
+
+  mat-form-field {
+    width: 100%;
+  }
+}
+
+// Responsive improvements for Material components
+::ng-deep {
+  .mat-mdc-tab-body-content {
+    overflow-x: hidden;
+  }
+
+  .mat-mdc-form-field {
+    @media (max-width: 480px) {
+      .mat-mdc-text-field-wrapper {
+        padding: 0;
+      }
+    }
+  }
+}

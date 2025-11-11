@@ -47,37 +47,48 @@ docker-compose restart backend
 
 ## Opción 2: Despliegue en Raspberry Pi 5 con k3s
 
-### Script Automático
+### 🚀 Instalación Automática (RECOMENDADO)
 
 ```bash
 # 1. Clonar repositorio
 git clone https://github.com/3kn4ls/thrall-defender.git
 cd thrall-defender
 
-# 2. Ejecutar script de despliegue
+# 2. Ejecutar script de instalación (instala k3s si no está presente)
+chmod +x scripts/install-k3s.sh
+./scripts/install-k3s.sh
+
+# 3. Acceder a la aplicación
+# http://<IP-de-tu-Raspberry>/thrall-defender/
+```
+
+**📖 Para guía paso a paso detallada, ver [docs/INSTALACION_K3S.md](./docs/INSTALACION_K3S.md)**
+
+### Scripts Alternativos
+
+```bash
+# Si k3s ya está instalado y solo quieres actualizar
 ./scripts/build-and-deploy.sh
 
-# 3. Verificar estado
+# Verificar estado
 ./scripts/status.sh
 
-# 4. Ver logs
+# Ver logs
 ./scripts/logs.sh
 ```
 
 ### Acceso a la Aplicación
 
-#### Port Forward (rápido para pruebas)
-```bash
-kubectl port-forward -n thrall-defender svc/thrall-frontend 8080:80 --address 0.0.0.0
-# Acceder a http://<IP-RASPBERRY>:8080
+#### Método Principal (Ingress)
+La aplicación estará disponible automáticamente en:
+```
+http://<IP-de-tu-Raspberry>/thrall-defender/
 ```
 
-#### LoadBalancer (recomendado)
+#### Port Forward (para pruebas)
 ```bash
-# Obtener IP externa
-kubectl get svc -n thrall-defender thrall-frontend
-
-# Acceder directamente a la IP mostrada
+kubectl port-forward -n thrall-defender svc/thrall-frontend 8080:80 --address 0.0.0.0
+# Acceder a http://<IP-RASPBERRY>:8080/thrall-defender/
 ```
 
 ### Scripts de Gestión
