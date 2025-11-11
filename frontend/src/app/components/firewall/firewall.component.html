@@ -1,0 +1,280 @@
+<div class="firewall-management">
+  <h3>Gestión de Firewall</h3>
+
+  <!-- Estadísticas del Firewall -->
+  <div class="stats-grid" *ngIf="firewallStats">
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-value">{{ firewallStats.total_blocked_ips }}</div>
+        <div class="stat-label">IPs Bloqueadas</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-value">{{ firewallStats.total_packets_blocked | number }}</div>
+        <div class="stat-label">Paquetes Bloqueados</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-value">{{ formatBytes(firewallStats.total_bytes_blocked) }}</div>
+        <div class="stat-label">Datos Bloqueados</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-value">{{ firewallStats.whitelisted_ips }}</div>
+        <div class="stat-label">IPs en Whitelist</div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <mat-tab-group>
+    <!-- Tab: IPs Bloqueadas -->
+    <mat-tab label="IPs Bloqueadas Activas">
+      <div style="padding: 20px;">
+        <!-- Bloquear IP manualmente -->
+        <mat-card style="margin-bottom: 20px;">
+          <mat-card-header>
+            <mat-card-title>Bloquear IP Manualmente</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div style="display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap;">
+              <mat-form-field style="flex: 1; min-width: 150px;">
+                <mat-label>Dirección IP</mat-label>
+                <input matInput [(ngModel)]="blockIpAddress" placeholder="192.168.1.100">
+              </mat-form-field>
+
+              <mat-form-field style="flex: 2; min-width: 200px;">
+                <mat-label>Razón</mat-label>
+                <input matInput [(ngModel)]="blockReason" placeholder="Actividad sospechosa">
+              </mat-form-field>
+
+              <mat-form-field style="flex: 1; min-width: 150px;">
+                <mat-label>Duración (horas)</mat-label>
+                <input matInput type="number" [(ngModel)]="blockDurationHours" placeholder="Permanente">
+              </mat-form-field>
+
+              <button mat-raised-button color="warn" (click)="blockIP()">
+                <mat-icon>block</mat-icon>
+                Bloquear
+              </button>
+            </div>
+            <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
+              <mat-icon style="font-size: 14px; vertical-align: middle;">info</mat-icon>
+              Deja la duración vacía para bloqueo permanente
+            </p>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Tabla de IPs bloqueadas -->
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>IPs Actualmente Bloqueadas</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="table-container">
+              <table mat-table [dataSource]="blockedIPs" class="full-width">
+                <ng-container matColumnDef="source">
+                  <th mat-header-cell *matHeaderCellDef>Dirección IP</th>
+                  <td mat-cell *matCellDef="let ip">
+                    <strong>{{ ip.source }}</strong>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="packets">
+                  <th mat-header-cell *matHeaderCellDef>Paquetes Bloqueados</th>
+                  <td mat-cell *matCellDef="let ip">{{ ip.packets | number }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="bytes">
+                  <th mat-header-cell *matHeaderCellDef>Datos Bloqueados</th>
+                  <td mat-cell *matCellDef="let ip">{{ formatBytes(ip.bytes) }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                  <td mat-cell *matCellDef="let ip">
+                    <button mat-button color="primary" (click)="unblockIP(ip.source)">
+                      <mat-icon>check_circle</mat-icon>
+                      Desbloquear
+                    </button>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="blockedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: blockedColumns;"></tr>
+              </table>
+            </div>
+
+            <div *ngIf="blockedIPs.length === 0" class="no-data">
+              <mat-icon>shield</mat-icon>
+              <p>No hay IPs bloqueadas actualmente</p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- Tab: Logs del Firewall -->
+    <mat-tab label="Logs del Firewall">
+      <div style="padding: 20px;">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>Historial de Acciones</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="table-container">
+              <table mat-table [dataSource]="firewallLogs" class="full-width">
+                <ng-container matColumnDef="timestamp">
+                  <th mat-header-cell *matHeaderCellDef>Tiempo</th>
+                  <td mat-cell *matCellDef="let log">
+                    {{ log.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="action">
+                  <th mat-header-cell *matHeaderCellDef>Acción</th>
+                  <td mat-cell *matCellDef="let log">
+                    <mat-chip [color]="getActionColor(log.action)">
+                      {{ log.action }}
+                    </mat-chip>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="ip_address">
+                  <th mat-header-cell *matHeaderCellDef>IP</th>
+                  <td mat-cell *matCellDef="let log">
+                    <strong>{{ log.ip_address }}</strong>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="reason">
+                  <th mat-header-cell *matHeaderCellDef>Razón</th>
+                  <td mat-cell *matCellDef="let log">{{ log.reason }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="performed_by">
+                  <th mat-header-cell *matHeaderCellDef>Realizado por</th>
+                  <td mat-cell *matCellDef="let log">{{ log.performed_by }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="success">
+                  <th mat-header-cell *matHeaderCellDef>Estado</th>
+                  <td mat-cell *matCellDef="let log">
+                    <mat-icon [style.color]="log.success ? '#4caf50' : '#f44336'">
+                      {{ getSuccessIcon(log.success) }}
+                    </mat-icon>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="logsColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: logsColumns;"></tr>
+              </table>
+            </div>
+
+            <div *ngIf="firewallLogs.length === 0" class="no-data">
+              <mat-icon>history</mat-icon>
+              <p>No hay logs disponibles</p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- Tab: Políticas de Bloqueo -->
+    <mat-tab label="Políticas de Bloqueo">
+      <div style="padding: 20px;">
+        <mat-card *ngIf="policy">
+          <mat-card-header>
+            <mat-card-title>Configuración de Bloqueo Automático</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div style="padding: 20px 0;">
+              <div style="margin-bottom: 20px;">
+                <mat-slide-toggle [(ngModel)]="policy.enabled" color="primary">
+                  <strong>Políticas de bloqueo activas</strong>
+                </mat-slide-toggle>
+                <p style="margin: 5px 0 0 40px; font-size: 12px; color: #666;">
+                  Habilita o deshabilita todas las políticas de bloqueo automático
+                </p>
+              </div>
+
+              <mat-divider></mat-divider>
+
+              <div style="margin: 20px 0;">
+                <mat-slide-toggle
+                  [(ngModel)]="policy.auto_block_blacklist"
+                  color="primary"
+                  [disabled]="!policy.enabled">
+                  <strong>Auto-bloquear IPs en lista negra</strong>
+                </mat-slide-toggle>
+                <p style="margin: 5px 0 0 40px; font-size: 12px; color: #666;">
+                  Bloquea automáticamente las IPs añadidas a la lista negra
+                </p>
+              </div>
+
+              <mat-divider></mat-divider>
+
+              <div style="margin: 20px 0;">
+                <mat-slide-toggle
+                  [(ngModel)]="policy.auto_block_on_alert"
+                  color="primary"
+                  [disabled]="!policy.enabled">
+                  <strong>Auto-bloquear por alertas</strong>
+                </mat-slide-toggle>
+                <p style="margin: 5px 0 0 40px; font-size: 12px; color: #666;">
+                  Bloquea IPs que generan múltiples alertas críticas
+                </p>
+
+                <mat-form-field style="margin-left: 40px; margin-top: 10px;" *ngIf="policy.auto_block_on_alert">
+                  <mat-label>Número de alertas para bloquear</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    [(ngModel)]="policy.alert_threshold"
+                    min="1"
+                    max="100"
+                    [disabled]="!policy.enabled">
+                </mat-form-field>
+              </div>
+
+              <mat-divider></mat-divider>
+
+              <div style="margin: 20px 0;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 500;">
+                  Duración del Bloqueo
+                </label>
+                <mat-form-field style="margin-left: 20px;">
+                  <mat-label>Horas (vacío = permanente)</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    [(ngModel)]="policy.block_duration_hours"
+                    min="1"
+                    placeholder="Permanente"
+                    [disabled]="!policy.enabled">
+                </mat-form-field>
+                <p style="margin: 5px 0 0 20px; font-size: 12px; color: #666;">
+                  Deja vacío para bloqueos permanentes
+                </p>
+              </div>
+
+              <mat-divider></mat-divider>
+
+              <div style="margin-top: 20px; text-align: right;">
+                <button mat-raised-button color="primary" (click)="updatePolicy()">
+                  <mat-icon>save</mat-icon>
+                  Guardar Configuración
+                </button>
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

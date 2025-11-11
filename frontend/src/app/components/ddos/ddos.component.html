@@ -1,0 +1,206 @@
+<div class="ddos-protection">
+  <h3>Protección DDoS</h3>
+
+  <!-- Estadísticas -->
+  <div class="stats-grid" *ngIf="stats">
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-value" [style.color]="stats.active_attacks > 0 ? '#f44336' : '#4caf50'">
+          {{ stats.active_attacks }}
+        </div>
+        <div class="stat-label">Ataques Activos</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-value">{{ stats.total_attacks_today }}</div>
+        <div class="stat-label">Ataques Hoy</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-value">{{ stats.mitigated_ips }}</div>
+        <div class="stat-label">IPs Mitigadas</div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <mat-tab-group>
+    <!-- Ataques Activos -->
+    <mat-tab label="Ataques Activos">
+      <div style="padding: 20px;">
+        <mat-card>
+          <mat-card-content>
+            <table mat-table [dataSource]="activeAttacks" class="full-width">
+              <ng-container matColumnDef="timestamp">
+                <th mat-header-cell *matHeaderCellDef>Tiempo</th>
+                <td mat-cell *matCellDef="let attack">{{ attack.timestamp | date:'HH:mm:ss' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="source_ip">
+                <th mat-header-cell *matHeaderCellDef>IP Origen</th>
+                <td mat-cell *matCellDef="let attack"><strong>{{ attack.source_ip }}</strong></td>
+              </ng-container>
+
+              <ng-container matColumnDef="attack_type">
+                <th mat-header-cell *matHeaderCellDef>Tipo</th>
+                <td mat-cell *matCellDef="let attack">{{ getAttackTypeName(attack.attack_type) }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="severity">
+                <th mat-header-cell *matHeaderCellDef>Severidad</th>
+                <td mat-cell *matCellDef="let attack">
+                  <mat-chip [style.background-color]="getSeverityColor(attack.severity)">
+                    {{ attack.severity | uppercase }}
+                  </mat-chip>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="pps">
+                <th mat-header-cell *matHeaderCellDef>Paquetes/s</th>
+                <td mat-cell *matCellDef="let attack">{{ attack.packets_per_second | number:'1.0-1' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                <td mat-cell *matCellDef="let attack">
+                  <button mat-button *ngIf="!attack.mitigated" color="warn" (click)="mitigateAttack(attack)">
+                    <mat-icon>shield</mat-icon>
+                    Mitigar
+                  </button>
+                  <span *ngIf="attack.mitigated" style="color: #4caf50;">
+                    <mat-icon style="vertical-align: middle;">check_circle</mat-icon>
+                    Mitigado
+                  </span>
+                  <button mat-icon-button (click)="endAttack(attack.source_ip)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="attackColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: attackColumns;"></tr>
+            </table>
+
+            <div *ngIf="activeAttacks.length === 0" class="no-data">
+              <mat-icon>shield</mat-icon>
+              <p>No hay ataques DDoS activos</p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- Top Atacantes -->
+    <mat-tab label="Top Atacantes">
+      <div style="padding: 20px;">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>IPs con Más Tráfico (Tiempo Real)</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <table mat-table [dataSource]="topAttackers" class="full-width">
+              <ng-container matColumnDef="ip">
+                <th mat-header-cell *matHeaderCellDef>IP</th>
+                <td mat-cell *matCellDef="let m"><strong>{{ m.ip }}</strong></td>
+              </ng-container>
+
+              <ng-container matColumnDef="pps">
+                <th mat-header-cell *matHeaderCellDef>Paquetes/s</th>
+                <td mat-cell *matCellDef="let m">{{ m.packets_per_second | number:'1.0-1' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="syn_rate">
+                <th mat-header-cell *matHeaderCellDef>SYN/s</th>
+                <td mat-cell *matCellDef="let m">{{ m.syn_rate | number:'1.0-1' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="udp_rate">
+                <th mat-header-cell *matHeaderCellDef>UDP/s</th>
+                <td mat-cell *matCellDef="let m">{{ m.udp_rate | number:'1.0-1' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="icmp_rate">
+                <th mat-header-cell *matHeaderCellDef>ICMP/s</th>
+                <td mat-cell *matCellDef="let m">{{ m.icmp_rate | number:'1.0-1' }}</td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="metricsColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: metricsColumns;"></tr>
+            </table>
+
+            <div *ngIf="topAttackers.length === 0" class="no-data">
+              <mat-icon>info</mat-icon>
+              <p>No hay datos de tráfico disponibles</p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- Configuración -->
+    <mat-tab label="Configuración">
+      <div style="padding: 20px;">
+        <mat-card *ngIf="config">
+          <mat-card-header>
+            <mat-card-title>Configuración de Protección DDoS</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div style="padding: 20px 0;">
+              <mat-slide-toggle [(ngModel)]="config.enabled" color="primary">
+                <strong>Protección DDoS Activada</strong>
+              </mat-slide-toggle>
+
+              <mat-divider style="margin: 20px 0;"></mat-divider>
+
+              <h4>Umbrales de Detección</h4>
+
+              <mat-form-field style="margin-right: 20px;">
+                <mat-label>Paquetes/segundo</mat-label>
+                <input matInput type="number" [(ngModel)]="config.pps_threshold" min="10" max="10000">
+              </mat-form-field>
+
+              <mat-form-field style="margin-right: 20px;">
+                <mat-label>SYN/segundo</mat-label>
+                <input matInput type="number" [(ngModel)]="config.syn_threshold" min="5" max="1000">
+              </mat-form-field>
+
+              <mat-form-field style="margin-right: 20px;">
+                <mat-label>UDP/segundo</mat-label>
+                <input matInput type="number" [(ngModel)]="config.udp_threshold" min="10" max="5000">
+              </mat-form-field>
+
+              <mat-form-field>
+                <mat-label>ICMP/segundo</mat-label>
+                <input matInput type="number" [(ngModel)]="config.icmp_threshold" min="5" max="1000">
+              </mat-form-field>
+
+              <mat-divider style="margin: 20px 0;"></mat-divider>
+
+              <mat-slide-toggle [(ngModel)]="config.auto_mitigate" color="primary">
+                <strong>Mitigación Automática</strong>
+              </mat-slide-toggle>
+              <p style="margin: 5px 0 0 40px; font-size: 12px; color: #666;">
+                Aplica rate limiting automáticamente a IPs que excedan los umbrales
+              </p>
+
+              <mat-form-field style="margin: 20px 0 0 40px;">
+                <mat-label>Duración mitigación (segundos)</mat-label>
+                <input matInput type="number" [(ngModel)]="config.mitigation_duration" min="60" max="86400">
+              </mat-form-field>
+
+              <mat-divider style="margin: 20px 0;"></mat-divider>
+
+              <button mat-raised-button color="primary" (click)="updateConfig()">
+                <mat-icon>save</mat-icon>
+                Guardar Configuración
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

@@ -12,6 +12,7 @@ spec:
   - host: mc-s3rv3r.ddns.net
     http:
       paths:
+      # Frontend - debe ser el último para que no capture las rutas del backend
       - path: /thrall-defender
         pathType: Prefix
         backend:

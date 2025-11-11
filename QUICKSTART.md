@@ -47,37 +47,48 @@ docker-compose restart backend
 
 ## Opción 2: Despliegue en Raspberry Pi 5 con k3s
 
-### Script Automático
+### 🚀 Instalación Automática (RECOMENDADO)
 
 ```bash
 # 1. Clonar repositorio
 git clone https://github.com/3kn4ls/thrall-defender.git
 cd thrall-defender
 
-# 2. Ejecutar script de despliegue
+# 2. Ejecutar script de instalación (instala k3s si no está presente)
+chmod +x scripts/install-k3s.sh
+./scripts/install-k3s.sh
+
+# 3. Acceder a la aplicación
+# http://<IP-de-tu-Raspberry>/thrall-defender/
+```
+
+**📖 Para guía paso a paso detallada, ver [docs/INSTALACION_K3S.md](./docs/INSTALACION_K3S.md)**
+
+### Scripts Alternativos
+
+```bash
+# Si k3s ya está instalado y solo quieres actualizar
 ./scripts/build-and-deploy.sh
 
-# 3. Verificar estado
+# Verificar estado
 ./scripts/status.sh
 
-# 4. Ver logs
+# Ver logs
 ./scripts/logs.sh
 ```
 
 ### Acceso a la Aplicación
 
-#### Port Forward (rápido para pruebas)
-```bash
-kubectl port-forward -n thrall-defender svc/thrall-frontend 8080:80 --address 0.0.0.0
-# Acceder a http://<IP-RASPBERRY>:8080
+#### Método Principal (Ingress)
+La aplicación estará disponible automáticamente en:
+```
+http://<IP-de-tu-Raspberry>/thrall-defender/
 ```
 
-#### LoadBalancer (recomendado)
+#### Port Forward (para pruebas)
 ```bash
-# Obtener IP externa
-kubectl get svc -n thrall-defender thrall-frontend
-
-# Acceder directamente a la IP mostrada
+kubectl port-forward -n thrall-defender svc/thrall-frontend 8080:80 --address 0.0.0.0
+# Acceder a http://<IP-RASPBERRY>:8080/thrall-defender/
 ```
 
 ### Scripts de Gestión
@@ -177,6 +188,110 @@ La aplicación detecta automáticamente:
 - ✅ Port scanning (múltiples puertos desde la misma IP)
 - ✅ Acceso desde IPs no autorizadas a puertos protegidos
 - ✅ Patrones anómalos de tráfico
+
+### 4. Configurar Firewall y Bloqueo Automático 🔥
+
+La pestaña **"Firewall"** te permite:
+
+#### Bloqueo Manual de IPs
+```
+1. Ir a pestaña "Firewall"
+2. Ingresar IP a bloquear
+3. Añadir razón (opcional)
+4. Configurar duración (vacío = permanente)
+5. Click en "Bloquear"
+```
+
+#### Políticas de Auto-Bloqueo
+```
+1. Ir a "Firewall" → "Políticas de Bloqueo"
+2. Configurar:
+   - ✅ Auto-bloquear IPs en lista negra
+   - ✅ Auto-bloquear por alertas (número de alertas)
+   - ✅ Duración de bloqueos temporales
+3. Guardar configuración
+```
+
+#### Ver IPs Bloqueadas
+```
+- En tiempo real desde "Firewall" → "IPs Bloqueadas Activas"
+- Muestra paquetes y datos bloqueados
+- Permite desbloquear con un click
+```
+
+#### Logs del Firewall
+```
+- Historial completo de todas las acciones
+- Bloqueos automáticos y manuales
+- Desbloqueos y expiraciones
+```
+
+**⚠️ Importante**:
+- Las IPs en **whitelist** nunca se bloquean (protección contra auto-bloqueo)
+- Añade tu IP a la whitelist antes de habilitar auto-bloqueo
+- Los bloqueos se aplican a nivel de iptables del sistema
+
+### 5. Configurar Protección DDoS 🛡️
+
+La pestaña **"Protección DDoS"** ofrece detección y mitigación automática de ataques:
+
+#### Ver Ataques Activos
+```
+1. Ir a pestaña "Protección DDoS"
+2. Ver estadísticas principales:
+   - Ataques activos en este momento
+   - Total de ataques detectados hoy
+   - IPs mitigadas actualmente
+3. En la sub-pestaña "Ataques Activos":
+   - Lista de ataques en curso con severidad
+   - Tipo de ataque (SYN Flood, UDP Flood, ICMP Flood, Tráfico Alto)
+   - Paquetes por segundo
+   - Botón para mitigar manualmente
+```
+
+#### Top Atacantes en Tiempo Real
+```
+1. Ir a "Top Atacantes"
+2. Ver las IPs con más tráfico:
+   - Paquetes por segundo totales
+   - Tasa de SYN/s
+   - Tasa de UDP/s
+   - Tasa de ICMP/s
+3. Útil para identificar patrones antes de que se conviertan en ataques
+```
+
+#### Configurar Umbrales y Mitigación Automática
+```
+1. Ir a "Configuración"
+2. Habilitar/deshabilitar protección DDoS
+3. Ajustar umbrales de detección:
+   - Paquetes/segundo (default: 100)
+   - SYN/segundo (default: 50)
+   - UDP/segundo (default: 200)
+   - ICMP/segundo (default: 50)
+4. Configurar mitigación automática:
+   - ✅ Habilitar auto-mitigación
+   - ⏱️ Duración de mitigación (60-86400 segundos)
+5. Guardar configuración
+```
+
+#### Cómo Funciona la Mitigación
+```
+Cuando se detecta un ataque:
+1. Se registra en la base de datos con severidad
+2. Se crea una alerta automática
+3. Si auto-mitigación está habilitada:
+   - Se aplica rate limiting con iptables hashlimit
+   - Limita la tasa de paquetes desde la IP atacante
+   - Se mantiene durante el tiempo configurado
+4. Aparece en "Ataques Activos" con estado "Mitigado"
+```
+
+**💡 Recomendaciones**:
+- Ajusta los umbrales según tu tráfico normal
+- Habilita auto-mitigación para respuesta inmediata
+- Monitoriza "Top Atacantes" para detectar patrones
+- Los umbrales muy bajos pueden generar falsos positivos
 
 ## 🆘 Problemas Comunes
 
