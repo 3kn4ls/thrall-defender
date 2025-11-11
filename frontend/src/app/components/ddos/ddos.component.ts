@@ -10,6 +10,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatDividerModule } from '@angular/material/divider';
 import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
@@ -30,7 +31,8 @@ import { DDoSConfig, DDoSAttack, DDoSMetrics, DDoSStats } from '../../models/pac
     MatFormFieldModule,
     MatTabsModule,
     MatSlideToggleModule,
-    MatChipsModule
+    MatChipsModule,
+    MatDividerModule
   ],
   templateUrl: './ddos.component.html',
   styleUrls: ['./ddos.component.scss']

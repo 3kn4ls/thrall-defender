@@ -9,7 +9,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-  - host: mc-s3rv3r.ddns.net
+  - host: northr3nd.duckdns.org
     http:
       paths:
       # Frontend - debe ser el último para que no capture las rutas del backend
@@ -22,5 +22,5 @@ spec:
               number: 80
   tls:
   - hosts:
-    - mc-s3rv3r.ddns.net
+    - northr3nd.duckdns.org
     secretName: thrall-defender-tls
