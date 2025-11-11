@@ -1,64 +1,103 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatTabsModule } from '@angular/material/tabs';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
 import { ApiService } from '../../services/api.service';
-import { DDoSConfig, DDoSAttack, DDoSMetrics, DDoSStats } from '../../models/packet.model';
+import {
+  DDoSMitigationLevel,
+  DDoSGeoRule,
+  DDoSProtectionStatus,
+  DDoSGeoStats,
+  DDoSConfig,
+  DDoSAttack,
+  DDoSStats
+} from '../../models/packet.model';
 
 @Component({
   selector: 'app-ddos',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
+    ReactiveFormsModule,
     MatCardModule,
+    MatTabsModule,
     MatTableModule,
     MatButtonModule,
     MatIconModule,
-    MatInputModule,
+    MatChipsModule,
     MatFormFieldModule,
-    MatTabsModule,
+    MatInputModule,
+    MatSelectModule,
     MatSlideToggleModule,
-    MatChipsModule
+    MatProgressSpinnerModule,
+    MatSnackBarModule,
+    MatTooltipModule
   ],
   templateUrl: './ddos.component.html',
   styleUrls: ['./ddos.component.scss']
 })
 export class DdosComponent implements OnInit, OnDestroy {
+  protectionStatus?: DDoSProtectionStatus;
+  mitigationLevels: DDoSMitigationLevel[] = [];
+  geoRules: DDoSGeoRule[] = [];
+  geoStats: DDoSGeoStats[] = [];
+  geoRuleForm!: FormGroup;
+  showGeoRuleForm = false;
   config?: DDoSConfig;
   stats?: DDoSStats;
   activeAttacks: DDoSAttack[] = [];
-  attackHistory: DDoSAttack[] = [];
-  topAttackers: DDoSMetrics[] = [];
-
-  attackColumns: string[] = ['timestamp', 'source_ip', 'attack_type', 'severity', 'pps', 'actions'];
-  historyColumns: string[] = ['timestamp', 'source_ip', 'attack_type', 'severity', 'duration', 'mitigated'];
-  metricsColumns: string[] = ['ip', 'pps', 'syn_rate', 'udp_rate', 'icmp_rate'];
-
+  loading = true;
+  attackColumns = ['timestamp', 'ip', 'type', 'severity', 'pps', 'mitigated', 'actions'];
+  geoRuleColumns = ['country', 'action', 'priority', 'enabled', 'actions'];
+  geoStatsColumns = ['country', 'attacks', 'blocked', 'packets'];
+  availableCountries = [
+    { code: 'US', name: 'United States' },
+    { code: 'CN', name: 'China' },
+    { code: 'RU', name: 'Russia' },
+    { code: 'BR', name: 'Brazil' },
+    { code: 'IN', name: 'India' },
+    { code: 'KR', name: 'South Korea' },
+    { code: 'JP', name: 'Japan' },
+    { code: 'DE', name: 'Germany' },
+    { code: 'GB', name: 'United Kingdom' },
+    { code: 'FR', name: 'France' }
+  ];
   private destroy$ = new Subject<void>();
 
-  constructor(private apiService: ApiService) {}
+  constructor(
+    private apiService: ApiService,
+    private snackBar: MatSnackBar,
+    private fb: FormBuilder
+  ) {
+    this.geoRuleForm = this.fb.group({
+      country_code: ['', Validators.required],
+      country_name: ['', Validators.required],
+      action: ['block', Validators.required],
+      priority: [100, [Validators.required, Validators.min(1)]],
+      enabled: [true],
+      custom_rate_limit: [null],
+      reason: ['']
+    });
+  }
 
   ngOnInit(): void {
-    this.loadData();
-
-    // Actualizar datos cada 5 segundos
-    interval(5000)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        this.loadRealTimeData();
-      });
+    this.loadAllData();
+    interval(5000).pipe(takeUntil(this.destroy$)).subscribe(() => this.loadRealTimeData());
   }
 
   ngOnDestroy(): void {
@@ -66,156 +105,151 @@ export class DdosComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  loadData(): void {
+  loadAllData(): void {
+    this.loading = true;
+    this.loadProtectionStatus();
+    this.loadMitigationLevels();
+    this.loadGeoRules();
+    this.loadGeoStats();
     this.loadConfig();
     this.loadStats();
     this.loadActiveAttacks();
-    this.loadAttackHistory();
-    this.loadTopAttackers();
+    this.loading = false;
   }
 
   loadRealTimeData(): void {
-    this.loadStats();
+    this.loadProtectionStatus();
     this.loadActiveAttacks();
-    this.loadTopAttackers();
+    this.loadStats();
+    this.loadGeoStats();
+  }
+
+  loadProtectionStatus(): void {
+    this.apiService.getDDoSProtectionStatus().subscribe({
+      next: (status) => this.protectionStatus = status,
+      error: (error) => console.error('Error:', error)
+    });
+  }
+
+  loadMitigationLevels(): void {
+    this.apiService.getMitigationLevels().subscribe({
+      next: (levels) => this.mitigationLevels = levels,
+      error: (error) => console.error('Error:', error)
+    });
+  }
+
+  loadGeoRules(): void {
+    this.apiService.getGeoRules().subscribe({
+      next: (rules) => this.geoRules = rules,
+      error: (error) => console.error('Error:', error)
+    });
+  }
+
+  loadGeoStats(): void {
+    this.apiService.getDDoSGeoStats().subscribe({
+      next: (stats) => this.geoStats = stats,
+      error: (error) => console.error('Error:', error)
+    });
   }
 
   loadConfig(): void {
     this.apiService.getDDoSConfig().subscribe({
-      next: (config) => {
-        this.config = config;
-      },
-      error: (error) => {
-        console.error('Error loading DDoS config:', error);
-      }
+      next: (config) => this.config = config,
+      error: (error) => console.error('Error:', error)
     });
   }
 
   loadStats(): void {
     this.apiService.getDDoSStats().subscribe({
-      next: (stats) => {
-        this.stats = stats;
-      },
-      error: (error) => {
-        console.error('Error loading DDoS stats:', error);
-      }
+      next: (stats) => this.stats = stats,
+      error: (error) => console.error('Error:', error)
     });
   }
 
   loadActiveAttacks(): void {
     this.apiService.getActiveDDoSAttacks().subscribe({
-      next: (attacks) => {
-        this.activeAttacks = attacks;
-      },
-      error: (error) => {
-        console.error('Error loading active attacks:', error);
-      }
+      next: (attacks) => this.activeAttacks = attacks,
+      error: (error) => console.error('Error:', error)
     });
   }
 
-  loadAttackHistory(): void {
-    this.apiService.getDDoSAttackHistory(0, 50).subscribe({
-      next: (attacks) => {
-        this.attackHistory = attacks;
-      },
-      error: (error) => {
-        console.error('Error loading attack history:', error);
-      }
-    });
-  }
-
-  loadTopAttackers(): void {
-    this.apiService.getDDoSMetrics().subscribe({
-      next: (metrics) => {
-        this.topAttackers = metrics;
-      },
-      error: (error) => {
-        console.error('Error loading top attackers:', error);
-      }
-    });
-  }
-
-  updateConfig(): void {
-    if (!this.config) return;
-
-    this.apiService.updateDDoSConfig(this.config.id, {
-      enabled: this.config.enabled,
-      pps_threshold: this.config.pps_threshold,
-      syn_threshold: this.config.syn_threshold,
-      udp_threshold: this.config.udp_threshold,
-      icmp_threshold: this.config.icmp_threshold,
-      auto_mitigate: this.config.auto_mitigate,
-      mitigation_duration: this.config.mitigation_duration,
-      alert_threshold: this.config.alert_threshold
-    }).subscribe({
+  activateLevel(levelName: string): void {
+    this.apiService.activateMitigationLevel(levelName).subscribe({
       next: () => {
-        alert('Configuración actualizada');
+        this.snackBar.open(`Nivel ${levelName} activado`, 'OK', { duration: 3000 });
+        this.loadProtectionStatus();
+        this.loadMitigationLevels();
       },
-      error: (error) => {
-        console.error('Error updating config:', error);
-        alert('Error al actualizar configuración');
-      }
+      error: () => this.snackBar.open('Error al activar nivel', 'ERROR', { duration: 3000 })
     });
   }
 
-  mitigateAttack(attack: DDoSAttack): void {
-    if (!confirm(`¿Mitigar ataque de ${attack.source_ip}?`)) return;
+  onCountrySelect(event: any): void {
+    const country = this.availableCountries.find(c => c.code === event.value);
+    if (country) {
+      this.geoRuleForm.patchValue({ country_name: country.name });
+    }
+  }
 
-    this.apiService.mitigateDDoSAttack(attack.source_ip, attack.attack_type).subscribe({
+  createGeoRule(): void {
+    if (this.geoRuleForm.valid) {
+      this.apiService.createGeoRule(this.geoRuleForm.value).subscribe({
+        next: () => {
+          this.snackBar.open('Regla creada', 'OK', { duration: 3000 });
+          this.loadGeoRules();
+          this.showGeoRuleForm = false;
+          this.geoRuleForm.reset({ action: 'block', priority: 100, enabled: true });
+        },
+        error: () => this.snackBar.open('Error al crear regla', 'ERROR', { duration: 3000 })
+      });
+    }
+  }
+
+  deleteGeoRule(ruleId: number): void {
+    if (confirm('¿Eliminar esta regla?')) {
+      this.apiService.deleteGeoRule(ruleId).subscribe({
+        next: () => {
+          this.snackBar.open('Regla eliminada', 'OK', { duration: 3000 });
+          this.loadGeoRules();
+        },
+        error: () => this.snackBar.open('Error', 'ERROR', { duration: 3000 })
+      });
+    }
+  }
+
+  mitigateAttack(ip: string, attackType: string): void {
+    this.apiService.mitigateDDoSAttack({ ip_address: ip, attack_type: attackType }).subscribe({
       next: () => {
-        alert('Ataque mitigado');
-        this.loadRealTimeData();
+        this.snackBar.open(`Ataque mitigado`, 'OK', { duration: 3000 });
+        this.loadActiveAttacks();
+        this.loadProtectionStatus();
       },
-      error: (error) => {
-        console.error('Error mitigating attack:', error);
-        alert('Error al mitigar ataque');
-      }
+      error: () => this.snackBar.open('Error', 'ERROR', { duration: 3000 })
     });
   }
 
-  endAttack(ip: string): void {
-    this.apiService.endDDoSAttack(ip).subscribe({
-      next: () => {
-        this.loadRealTimeData();
-      },
-      error: (error) => {
-        console.error('Error ending attack:', error);
-      }
-    });
+  getThreatLevelColor(level: string): string {
+    const colors: any = {
+      'none': '#4caf50',
+      'low': '#8bc34a',
+      'medium': '#ff9800',
+      'high': '#ff5722',
+      'critical': '#f44336'
+    };
+    return colors[level] || '#9e9e9e';
   }
 
   getSeverityColor(severity: string): string {
+    return this.getThreatLevelColor(severity);
+  }
+
+  getActionColor(action: string): string {
     const colors: any = {
-      'critical': '#d32f2f',
-      'high': '#f57c00',
-      'medium': '#fbc02d',
-      'low': '#7cb342'
+      'allow': '#4caf50',
+      'block': '#f44336',
+      'challenge': '#ff9800',
+      'rate_limit': '#2196f3'
     };
-    return colors[severity] || '#999';
-  }
-
-  getAttackTypeName(type: string): string {
-    const names: any = {
-      'syn_flood': 'SYN Flood',
-      'udp_flood': 'UDP Flood',
-      'icmp_flood': 'ICMP Flood',
-      'high_traffic': 'Tráfico Alto'
-    };
-    return names[type] || type;
-  }
-
-  formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-  }
-
-  formatDuration(seconds?: number): string {
-    if (!seconds) return '-';
-    if (seconds < 60) return `${seconds}s`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-    return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+    return colors[action] || '#9e9e9e';
   }
 }

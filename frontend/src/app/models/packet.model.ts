@@ -146,3 +146,58 @@ export interface DDoSStats {
   top_attackers: DDoSMetrics[];
   attack_types_distribution: { [key: string]: number };
 }
+
+// Advanced DDoS Models
+export interface DDoSMitigationLevel {
+  id: number;
+  name: string;
+  description: string;
+  is_active: boolean;
+  pps_threshold: number;
+  syn_threshold: number;
+  udp_threshold: number;
+  icmp_threshold: number;
+  connection_threshold: number;
+  rate_limit_enabled: boolean;
+  rate_limit_pps: number;
+  rate_limit_burst: number;
+  challenge_mode: string;
+  challenge_threshold: number;
+  geo_blocking_enabled: boolean;
+  auto_mitigate: boolean;
+  mitigation_duration: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DDoSGeoRule {
+  id: number;
+  country_code: string;
+  country_name: string;
+  action: 'allow' | 'block' | 'challenge' | 'rate_limit';
+  priority: number;
+  enabled: boolean;
+  custom_rate_limit?: number;
+  custom_burst?: number;
+  reason?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DDoSProtectionStatus {
+  protection_enabled: boolean;
+  active_level?: DDoSMitigationLevel;
+  geo_rules_count: number;
+  active_attacks_count: number;
+  total_attacks_blocked_today: number;
+  current_threat_level: 'none' | 'low' | 'medium' | 'high' | 'critical';
+  geoip_available: boolean;
+}
+
+export interface DDoSGeoStats {
+  country_code: string;
+  country_name: string;
+  attack_count: number;
+  blocked_count: number;
+  total_packets: number;
+}
