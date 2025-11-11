@@ -8,7 +8,11 @@ import {
   Alert,
   IPWhitelist,
   IPBlacklist,
-  PortMonitor
+  PortMonitor,
+  BlockingPolicy,
+  FirewallLog,
+  FirewallStats,
+  BlockedIP
 } from '../models/packet.model';
 
 @Injectable({
@@ -105,5 +109,61 @@ export class ApiService {
 
   acknowledgeAlert(id: number): Observable<any> {
     return this.http.patch(`${this.apiUrl}/alerts/${id}/acknowledge`, {});
+  }
+
+  // Firewall
+  blockIP(ipAddress: string, reason?: string, durationHours?: number): Observable<any> {
+    return this.http.post(`${this.apiUrl}/firewall/block`, {
+      ip_address: ipAddress,
+      reason,
+      duration_hours: durationHours
+    });
+  }
+
+  unblockIP(ipAddress: string, reason?: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/firewall/unblock`, {
+      ip_address: ipAddress,
+      reason
+    });
+  }
+
+  getBlockedIPs(): Observable<BlockedIP[]> {
+    return this.http.get<BlockedIP[]>(`${this.apiUrl}/firewall/blocked-ips`);
+  }
+
+  getFirewallStats(): Observable<FirewallStats> {
+    return this.http.get<FirewallStats>(`${this.apiUrl}/firewall/stats`);
+  }
+
+  getFirewallLogs(skip: number = 0, limit: number = 100, ipAddress?: string, action?: string): Observable<FirewallLog[]> {
+    let params = new HttpParams()
+      .set('skip', skip.toString())
+      .set('limit', limit.toString());
+
+    if (ipAddress) {
+      params = params.set('ip_address', ipAddress);
+    }
+    if (action) {
+      params = params.set('action', action);
+    }
+
+    return this.http.get<FirewallLog[]>(`${this.apiUrl}/firewall/logs`, { params });
+  }
+
+  // Policies
+  getPolicies(): Observable<BlockingPolicy[]> {
+    return this.http.get<BlockingPolicy[]>(`${this.apiUrl}/policies`);
+  }
+
+  getPolicy(id: number): Observable<BlockingPolicy> {
+    return this.http.get<BlockingPolicy>(`${this.apiUrl}/policies/${id}`);
+  }
+
+  getPolicyByName(name: string): Observable<BlockingPolicy> {
+    return this.http.get<BlockingPolicy>(`${this.apiUrl}/policies/name/${name}`);
+  }
+
+  updatePolicy(id: number, policy: Partial<BlockingPolicy>): Observable<BlockingPolicy> {
+    return this.http.patch<BlockingPolicy>(`${this.apiUrl}/policies/${id}`, policy);
   }
 }

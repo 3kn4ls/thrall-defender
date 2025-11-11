@@ -22,6 +22,7 @@ WORKDIR /app
 # Instalar solo runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpcap0.8 \
+    iptables \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar dependencias Python desde builder

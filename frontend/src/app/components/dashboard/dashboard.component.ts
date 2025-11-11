@@ -13,6 +13,7 @@ import { Stats, Packet } from '../../models/packet.model';
 import { PacketListComponent } from '../packet-list/packet-list.component';
 import { AlertsComponent } from '../alerts/alerts.component';
 import { IpManagementComponent } from '../ip-management/ip-management.component';
+import { FirewallComponent } from '../firewall/firewall.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -25,7 +26,8 @@ import { IpManagementComponent } from '../ip-management/ip-management.component'
     MatTabsModule,
     PacketListComponent,
     AlertsComponent,
-    IpManagementComponent
+    IpManagementComponent,
+    FirewallComponent
   ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']

@@ -178,6 +178,48 @@ La aplicación detecta automáticamente:
 - ✅ Acceso desde IPs no autorizadas a puertos protegidos
 - ✅ Patrones anómalos de tráfico
 
+### 4. Configurar Firewall y Bloqueo Automático 🔥
+
+La pestaña **"Firewall"** te permite:
+
+#### Bloqueo Manual de IPs
+```
+1. Ir a pestaña "Firewall"
+2. Ingresar IP a bloquear
+3. Añadir razón (opcional)
+4. Configurar duración (vacío = permanente)
+5. Click en "Bloquear"
+```
+
+#### Políticas de Auto-Bloqueo
+```
+1. Ir a "Firewall" → "Políticas de Bloqueo"
+2. Configurar:
+   - ✅ Auto-bloquear IPs en lista negra
+   - ✅ Auto-bloquear por alertas (número de alertas)
+   - ✅ Duración de bloqueos temporales
+3. Guardar configuración
+```
+
+#### Ver IPs Bloqueadas
+```
+- En tiempo real desde "Firewall" → "IPs Bloqueadas Activas"
+- Muestra paquetes y datos bloqueados
+- Permite desbloquear con un click
+```
+
+#### Logs del Firewall
+```
+- Historial completo de todas las acciones
+- Bloqueos automáticos y manuales
+- Desbloqueos y expiraciones
+```
+
+**⚠️ Importante**:
+- Las IPs en **whitelist** nunca se bloquean (protección contra auto-bloqueo)
+- Añade tu IP a la whitelist antes de habilitar auto-bloqueo
+- Los bloqueos se aplican a nivel de iptables del sistema
+
 ## 🆘 Problemas Comunes
 
 ### Backend no captura paquetes

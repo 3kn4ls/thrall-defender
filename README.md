@@ -31,14 +31,28 @@ thrall-defender/
 
 ## 🚀 Características
 
+### Monitorización
 - ✅ Captura de tráfico en tiempo real
 - ✅ Monitorización de puertos específicos
-- ✅ Detección de IPs sospechosas
+- ✅ Detección automática de IPs sospechosas
 - ✅ Dashboard en tiempo real con WebSockets
-- ✅ Alertas configurables
 - ✅ Filtrado por protocolo, puerto e IP
 - ✅ Estadísticas y gráficos históricos
+
+### Firewall y Bloqueo
+- 🔥 **Bloqueo activo de IPs** con iptables
+- 🔥 **Auto-bloqueo** de IPs en lista negra
+- 🔥 **Auto-bloqueo por alertas** (configurable)
+- 🔥 **Bloqueos temporales** con expiración automática
+- 🔥 **Protección de whitelist** (IPs nunca se bloquean)
+- 🔥 **Logs completos** de todas las acciones del firewall
+- 🔥 **Políticas configurables** de bloqueo automático
+
+### Alertas y Gestión
+- ✅ Sistema de alertas con niveles de severidad
 - ✅ Lista blanca/negra de IPs
+- ✅ Gestión visual de firewall desde el dashboard
+- ✅ Detección de port scanning
 
 ## 📦 Despliegue Rápido
 
@@ -46,7 +60,16 @@ Ver [docs/deployment.md](./docs/deployment.md) para instrucciones detalladas de 
 
 ## 🔐 Seguridad
 
-La herramienta captura paquetes en modo promiscuo, por lo que requiere privilegios elevados (capabilities NET_ADMIN y NET_RAW en Kubernetes).
+La herramienta captura paquetes en modo promiscuo y gestiona reglas de firewall iptables, por lo que requiere privilegios elevados (capabilities NET_ADMIN y NET_RAW en Kubernetes).
+
+### Bloqueo Automático
+
+Thrall Defender puede bloquear automáticamente IPs maliciosas usando iptables:
+
+1. **Bloqueo por Lista Negra**: IPs añadidas a la blacklist se bloquean automáticamente
+2. **Bloqueo por Alertas**: IPs que generan múltiples alertas críticas se bloquean automáticamente
+3. **Bloqueos Temporales**: Configura duración de bloqueos (permanentes o temporales)
+4. **Whitelist Protegida**: IPs en whitelist nunca se bloquean (protección contra auto-bloqueo)
 
 ## 📝 Licencia
 

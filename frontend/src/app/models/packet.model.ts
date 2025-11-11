@@ -59,3 +59,41 @@ export interface PortMonitor {
   whitelist_only: boolean;
   created_at: string;
 }
+
+export interface BlockingPolicy {
+  id: number;
+  name: string;
+  enabled: boolean;
+  auto_block_blacklist: boolean;
+  auto_block_on_alert: boolean;
+  alert_threshold: number;
+  block_duration_hours?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FirewallLog {
+  id: number;
+  timestamp: string;
+  action: string;
+  ip_address: string;
+  reason: string;
+  success: boolean;
+  performed_by: string;
+  expires_at?: string;
+}
+
+export interface FirewallStats {
+  total_blocked_ips: number;
+  total_packets_blocked: number;
+  total_bytes_blocked: number;
+  whitelisted_ips: number;
+  chain_name: string;
+}
+
+export interface BlockedIP {
+  source: string;
+  packets: number;
+  bytes: number;
+  rule_number: string;
+}

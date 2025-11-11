@@ -114,6 +114,14 @@ class NetworkService:
         )
         db.add(alert)
         await db.commit()
+        await db.refresh(alert)
+
+        # Verificar si se debe bloquear automáticamente
+        try:
+            from .firewall_service import FirewallService
+            await FirewallService.check_auto_block(db, packet.source_ip, alert)
+        except Exception as e:
+            logger.error(f"Error checking auto-block: {e}")
 
     @staticmethod
     async def get_packets(

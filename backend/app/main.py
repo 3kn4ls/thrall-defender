@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from . import models, schemas
 from .database import init_db, get_db, async_session_maker
 from .services import NetworkService
+from .firewall_service import FirewallService
 from .packet_capture import PacketCapture
 
 # Configurar logging
@@ -28,6 +29,10 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Thrall Defender Backend")
     await init_db()
     logger.info("Database initialized")
+
+    # Inicializar firewall
+    async with async_session_maker() as db:
+        await FirewallService.initialize(db)
 
     # Iniciar captura de paquetes
     global packet_capture
@@ -172,6 +177,10 @@ async def add_to_whitelist(
     try:
         await db.commit()
         await db.refresh(db_ip)
+
+        # Notificar al firewall
+        await FirewallService.on_whitelist_added(db, db_ip.ip_address)
+
         return db_ip
     except Exception as e:
         await db.rollback()
@@ -189,8 +198,13 @@ async def remove_from_whitelist(ip_id: int, db: AsyncSession = Depends(get_db)):
     if not ip:
         raise HTTPException(status_code=404, detail="IP not found")
 
+    ip_address = ip.ip_address
     await db.delete(ip)
     await db.commit()
+
+    # Notificar al firewall
+    await FirewallService.on_whitelist_removed(db, ip_address)
+
     return {"status": "deleted"}
 
 
@@ -215,6 +229,10 @@ async def add_to_blacklist(
     try:
         await db.commit()
         await db.refresh(db_ip)
+
+        # Notificar al firewall para bloqueo automático
+        await FirewallService.on_blacklist_added(db, db_ip.ip_address, db_ip.description or "")
+
         return db_ip
     except Exception as e:
         await db.rollback()
@@ -232,8 +250,13 @@ async def remove_from_blacklist(ip_id: int, db: AsyncSession = Depends(get_db)):
     if not ip:
         raise HTTPException(status_code=404, detail="IP not found")
 
+    ip_address = ip.ip_address
     await db.delete(ip)
     await db.commit()
+
+    # Notificar al firewall
+    await FirewallService.on_blacklist_removed(db, ip_address)
+
     return {"status": "deleted"}
 
 
@@ -318,6 +341,163 @@ async def acknowledge_alert(alert_id: int, db: AsyncSession = Depends(get_db)):
     alert.acknowledged = True
     await db.commit()
     return {"status": "acknowledged"}
+
+
+# ========== Firewall Management ==========
+
+@app.post("/api/firewall/block")
+async def block_ip_endpoint(
+    request: schemas.BlockIPRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Bloquea una IP manualmente"""
+    success = await FirewallService.block_ip(
+        db,
+        request.ip_address,
+        reason=request.reason or "Manual block",
+        performed_by="manual",
+        duration_hours=request.duration_hours
+    )
+
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to block IP. Check if IP is whitelisted or invalid.")
+
+    return {"status": "blocked", "ip_address": request.ip_address}
+
+
+@app.post("/api/firewall/unblock")
+async def unblock_ip_endpoint(
+    request: schemas.UnblockIPRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Desbloquea una IP manualmente"""
+    success = await FirewallService.unblock_ip(
+        db,
+        request.ip_address,
+        reason=request.reason or "Manual unblock",
+        performed_by="manual"
+    )
+
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to unblock IP or IP was not blocked.")
+
+    return {"status": "unblocked", "ip_address": request.ip_address}
+
+
+@app.get("/api/firewall/blocked-ips", response_model=List[schemas.BlockedIP])
+async def get_blocked_ips():
+    """Obtiene lista de IPs bloqueadas actualmente en el firewall"""
+    blocked_ips = await FirewallService.get_blocked_ips_from_firewall()
+
+    return [
+        schemas.BlockedIP(
+            source=ip['source'],
+            packets=int(ip['packets']),
+            bytes=int(ip['bytes']),
+            rule_number=ip['rule_number']
+        )
+        for ip in blocked_ips
+    ]
+
+
+@app.get("/api/firewall/stats", response_model=schemas.FirewallStats)
+async def get_firewall_stats():
+    """Obtiene estadísticas del firewall"""
+    stats = FirewallService.get_firewall_statistics()
+    return schemas.FirewallStats(**stats)
+
+
+@app.get("/api/firewall/logs", response_model=List[schemas.FirewallLog])
+async def get_firewall_logs(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    ip_address: Optional[str] = None,
+    action: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Obtiene logs de acciones del firewall"""
+    logs = await FirewallService.get_firewall_logs(db, skip, limit, ip_address, action)
+    return logs
+
+
+# ========== Blocking Policies ==========
+
+@app.get("/api/policies", response_model=List[schemas.BlockingPolicy])
+async def get_policies(db: AsyncSession = Depends(get_db)):
+    """Obtiene políticas de bloqueo"""
+    from sqlalchemy import select
+    result = await db.execute(select(models.BlockingPolicy))
+    return result.scalars().all()
+
+
+@app.get("/api/policies/{policy_id}", response_model=schemas.BlockingPolicy)
+async def get_policy(policy_id: int, db: AsyncSession = Depends(get_db)):
+    """Obtiene una política específica"""
+    from sqlalchemy import select
+    result = await db.execute(
+        select(models.BlockingPolicy).where(models.BlockingPolicy.id == policy_id)
+    )
+    policy = result.scalar_one_or_none()
+    if not policy:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    return policy
+
+
+@app.get("/api/policies/name/{policy_name}", response_model=schemas.BlockingPolicy)
+async def get_policy_by_name(policy_name: str, db: AsyncSession = Depends(get_db)):
+    """Obtiene una política por nombre"""
+    from sqlalchemy import select
+    result = await db.execute(
+        select(models.BlockingPolicy).where(models.BlockingPolicy.name == policy_name)
+    )
+    policy = result.scalar_one_or_none()
+    if not policy:
+        raise HTTPException(status_code=404, detail="Policy not found")
+    return policy
+
+
+@app.patch("/api/policies/{policy_id}", response_model=schemas.BlockingPolicy)
+async def update_policy(
+    policy_id: int,
+    policy_update: schemas.BlockingPolicyUpdate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Actualiza una política de bloqueo"""
+    from sqlalchemy import select
+    result = await db.execute(
+        select(models.BlockingPolicy).where(models.BlockingPolicy.id == policy_id)
+    )
+    policy = result.scalar_one_or_none()
+    if not policy:
+        raise HTTPException(status_code=404, detail="Policy not found")
+
+    # Actualizar campos
+    update_data = policy_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(policy, field, value)
+
+    policy.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(policy)
+    return policy
+
+
+@app.post("/api/policies", response_model=schemas.BlockingPolicy)
+async def create_policy(
+    policy: schemas.BlockingPolicyCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """Crea una nueva política de bloqueo"""
+    db_policy = models.BlockingPolicy(**policy.dict())
+    db.add(db_policy)
+    try:
+        await db.commit()
+        await db.refresh(db_policy)
+        return db_policy
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 if __name__ == "__main__":

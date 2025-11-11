@@ -114,3 +114,82 @@ class Stats(BaseModel):
     top_ports: list[dict]
     top_protocols: list[dict]
     recent_ips: list[str]
+
+
+class BlockingPolicyBase(BaseModel):
+    name: str
+    enabled: bool = True
+    auto_block_blacklist: bool = True
+    auto_block_on_alert: bool = False
+    alert_threshold: int = Field(default=3, ge=1, le=100)
+    block_duration_hours: Optional[int] = Field(default=None, ge=1)
+
+
+class BlockingPolicyCreate(BlockingPolicyBase):
+    pass
+
+
+class BlockingPolicyUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    auto_block_blacklist: Optional[bool] = None
+    auto_block_on_alert: Optional[bool] = None
+    alert_threshold: Optional[int] = Field(default=None, ge=1, le=100)
+    block_duration_hours: Optional[int] = Field(default=None, ge=1)
+
+
+class BlockingPolicy(BlockingPolicyBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class FirewallLogBase(BaseModel):
+    action: str
+    ip_address: str
+    reason: str
+    performed_by: str = "system"
+    expires_at: Optional[datetime] = None
+
+
+class FirewallLogCreate(FirewallLogBase):
+    success: bool = True
+
+
+class FirewallLog(FirewallLogBase):
+    id: int
+    timestamp: datetime
+    success: bool
+
+    class Config:
+        from_attributes = True
+
+
+class FirewallStats(BaseModel):
+    """Estadísticas del firewall"""
+    total_blocked_ips: int
+    total_packets_blocked: int
+    total_bytes_blocked: int
+    whitelisted_ips: int
+    chain_name: str
+
+
+class BlockIPRequest(BaseModel):
+    ip_address: str
+    reason: Optional[str] = "Manual block"
+    duration_hours: Optional[int] = None
+
+
+class UnblockIPRequest(BaseModel):
+    ip_address: str
+    reason: Optional[str] = "Manual unblock"
+
+
+class BlockedIP(BaseModel):
+    """IP bloqueada con estadísticas"""
+    source: str
+    packets: int
+    bytes: int
+    rule_number: str
