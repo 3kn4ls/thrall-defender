@@ -212,18 +212,13 @@ export class ApiService {
     return this.http.get<DDoSMetrics[]>(`${this.apiUrl}/ddos/metrics`, { params });
   }
 
-  mitigateDDoSAttack(ipAddress: string, attackType: string, reason?: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/ddos/mitigate`, {
-      ip_address: ipAddress,
-      attack_type: attackType,
-      reason
-    });
+  mitigateDDoSAttack(request: { ip_address: string; attack_type: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/ddos/mitigate`, request);
   }
 
   endDDoSAttack(ip: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/ddos/attacks/${ip}/end`, {});
   }
-}
 
   // Advanced DDoS Methods
   getMitigationLevels(): Observable<DDoSMitigationLevel[]> {
