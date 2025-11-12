@@ -123,8 +123,19 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
   loadAlerts(): void {
     this.loading = true;
-    // Load all alerts (we'll filter client-side for better UX)
-    this.apiService.getAlerts().subscribe({
+
+    // Determinar filtro acknowledged según selectedStatus
+    let acknowledgedFilter: boolean | undefined;
+    if (this.selectedStatus === 'unacknowledged') {
+      acknowledgedFilter = false;
+    } else if (this.selectedStatus === 'acknowledged') {
+      acknowledgedFilter = true;
+    }
+    // Si selectedStatus es 'all', no filtramos (undefined)
+
+    // Cargar alertas con filtro del servidor (más eficiente)
+    // Límite de 2000 para evitar problemas de rendimiento
+    this.apiService.getAlerts(acknowledgedFilter, 2000, 0).subscribe({
       next: (alerts) => {
         this.alerts = alerts;
         this.calculateStats();
@@ -225,7 +236,9 @@ export class AlertsComponent implements OnInit, OnDestroy {
 
   onFilterChange(): void {
     this.pageIndex = 0; // Reset to first page
-    this.applyFilters();
+    // Recargar alertas del servidor cuando cambia el filtro de estado
+    // Los demás filtros (severidad, tipo, IP) se aplican del lado del cliente
+    this.loadAlerts();
   }
 
   acknowledgeAlert(id: number): void {

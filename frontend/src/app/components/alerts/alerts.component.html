@@ -90,7 +90,15 @@
       </div>
 
       <div class="results-info">
-        <span>Mostrando {{ displayedAlerts.length }} de {{ totalAlerts | number }} alertas</span>
+        <div>
+          <span>Mostrando {{ displayedAlerts.length }} de {{ totalAlerts | number }} alertas</span>
+          <span *ngIf="totalAlerts === 2000" style="color: #ff9800; margin-left: 8px;">
+            (máximo 2000 resultados - usa filtros para refinar)
+          </span>
+          <span *ngIf="selectedStatus === 'unacknowledged'" style="color: #2196f3; margin-left: 8px;">
+            · Filtrando solo no reconocidas
+          </span>
+        </div>
         <mat-slide-toggle [(ngModel)]="autoRefresh" color="primary">
           Auto-actualizar (10s)
         </mat-slide-toggle>
@@ -264,8 +272,18 @@
   <!-- Empty State -->
   <div *ngIf="displayedAlerts.length === 0 && !loading" class="empty-state">
     <mat-icon>notifications_off</mat-icon>
-    <h3>No hay alertas</h3>
-    <p *ngIf="selectedStatus === 'unacknowledged'">¡Todas las alertas han sido reconocidas!</p>
-    <p *ngIf="selectedStatus !== 'unacknowledged'">No se encontraron alertas con los filtros aplicados.</p>
+    <h3>No hay alertas para mostrar</h3>
+    <p *ngIf="selectedStatus === 'unacknowledged'">
+      ¡Excelente! No hay alertas pendientes por reconocer.<br>
+      <small style="color: #666;">Cambia el filtro a "Todas" para ver el historial completo.</small>
+    </p>
+    <p *ngIf="selectedStatus === 'acknowledged'">
+      No hay alertas reconocidas.<br>
+      <small style="color: #666;">Las alertas reconocidas aparecerán aquí.</small>
+    </p>
+    <p *ngIf="selectedStatus === 'all'">
+      No se encontraron alertas con los filtros aplicados.<br>
+      <small style="color: #666;">Intenta ajustar los criterios de búsqueda.</small>
+    </p>
   </div>
 </div>

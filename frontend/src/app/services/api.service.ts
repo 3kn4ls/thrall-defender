@@ -107,8 +107,11 @@ export class ApiService {
   }
 
   // Alerts
-  getAlerts(acknowledged?: boolean): Observable<Alert[]> {
-    let params = new HttpParams();
+  getAlerts(acknowledged?: boolean, limit: number = 1000, offset: number = 0): Observable<Alert[]> {
+    let params = new HttpParams()
+      .set('limit', limit.toString())
+      .set('offset', offset.toString());
+
     if (acknowledged !== undefined) {
       params = params.set('acknowledged', acknowledged.toString());
     }

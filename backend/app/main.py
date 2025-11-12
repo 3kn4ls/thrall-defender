@@ -336,14 +336,28 @@ async def remove_port_monitor(monitor_id: int, db: AsyncSession = Depends(get_db
 @app.get("/api/alerts", response_model=List[schemas.Alert])
 async def get_alerts(
     acknowledged: Optional[bool] = None,
+    limit: int = 1000,
+    offset: int = 0,
     db: AsyncSession = Depends(get_db)
 ):
-    """Obtiene lista de alertas"""
+    """
+    Obtiene lista de alertas con paginación
+    - acknowledged: filtrar por estado de reconocimiento (opcional)
+    - limit: número máximo de resultados (default: 1000, max: 5000)
+    - offset: número de registros a saltar (default: 0)
+    """
     from sqlalchemy import select, desc
+
+    # Limitar el máximo de resultados para evitar problemas de memoria
+    limit = min(limit, 5000)
+
     query = select(models.Alert).order_by(desc(models.Alert.timestamp))
 
     if acknowledged is not None:
         query = query.where(models.Alert.acknowledged == acknowledged)
+
+    # Aplicar límite y offset
+    query = query.limit(limit).offset(offset)
 
     result = await db.execute(query)
     return result.scalars().all()
