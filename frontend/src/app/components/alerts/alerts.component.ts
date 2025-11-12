@@ -57,6 +57,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
   alerts: Alert[] = [];
   filteredAlerts: Alert[] = [];
   displayedAlerts: Alert[] = [];
+  loading = false;
 
   // Pagination
   pageSize = 20;
@@ -121,6 +122,7 @@ export class AlertsComponent implements OnInit, OnDestroy {
   }
 
   loadAlerts(): void {
+    this.loading = true;
     // Load all alerts (we'll filter client-side for better UX)
     this.apiService.getAlerts().subscribe({
       next: (alerts) => {
@@ -128,9 +130,11 @@ export class AlertsComponent implements OnInit, OnDestroy {
         this.calculateStats();
         this.extractAlertTypes();
         this.applyFilters();
+        this.loading = false;
       },
       error: (error) => {
         console.error('Error loading alerts:', error);
+        this.loading = false;
       }
     });
   }
