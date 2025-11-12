@@ -15,10 +15,6 @@ spec:
       labels:
         app: thrall-backend
     spec:
-      # hostNetwork permite captura de paquetes de la red del host
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
-
       containers:
       - name: backend
         image: thrall-backend:latest
@@ -44,10 +40,10 @@ spec:
 
         resources:
           requests:
-            memory: "256Mi"
+            memory: "512Mi"
             cpu: "250m"
           limits:
-            memory: "512Mi"
+            memory: "1Gi"
             cpu: "500m"
 
         livenessProbe:

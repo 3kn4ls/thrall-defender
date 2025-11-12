@@ -10,6 +10,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatDividerModule } from '@angular/material/divider';
 import { ApiService } from '../../services/api.service';
 import { BlockedIP, FirewallLog, FirewallStats, BlockingPolicy } from '../../models/packet.model';
 
@@ -27,7 +28,8 @@ import { BlockedIP, FirewallLog, FirewallStats, BlockingPolicy } from '../../mod
     MatFormFieldModule,
     MatTabsModule,
     MatSlideToggleModule,
-    MatChipsModule
+    MatChipsModule,
+    MatDividerModule
   ],
   templateUrl: './firewall.component.html',
   styleUrls: ['./firewall.component.scss']

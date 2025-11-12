@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 # Instancia global del capturador
 packet_capture = None
 active_websockets = set()
+db_semaphore = asyncio.Semaphore(10)  # Limita operaciones concurrentes de DB
 cleanup_task = None
 
 
@@ -89,37 +90,38 @@ app.add_middleware(
 async def handle_packet(packet_data: dict):
     """Maneja un paquete capturado"""
     try:
-        async with async_session_maker() as db:
-            # Analizar para DDoS
-            await DDoSService.analyze_packet(db, packet_data)
+        async with db_semaphore:
+            async with async_session_maker() as db:
+                # Analizar para DDoS
+                await DDoSService.analyze_packet(db, packet_data)
 
-            # Guardar paquete
-            packet = await NetworkService.save_packet(db, packet_data)
+                # Guardar paquete
+                packet = await NetworkService.save_packet(db, packet_data)
 
-            # Enviar a todos los websockets conectados
-            packet_dict = {
-                "id": packet.id,
-                "timestamp": packet.timestamp.isoformat(),
-                "source_ip": packet.source_ip,
-                "destination_ip": packet.destination_ip,
-                "source_port": packet.source_port,
-                "destination_port": packet.destination_port,
-                "protocol": packet.protocol,
-                "packet_size": packet.packet_size,
-                "is_suspicious": packet.is_suspicious,
-                "is_blocked": packet.is_blocked
-            }
+                # Enviar a todos los websockets conectados
+                packet_dict = {
+                    "id": packet.id,
+                    "timestamp": packet.timestamp.isoformat(),
+                    "source_ip": packet.source_ip,
+                    "destination_ip": packet.destination_ip,
+                    "source_port": packet.source_port,
+                    "destination_port": packet.destination_port,
+                    "protocol": packet.protocol,
+                    "packet_size": packet.packet_size,
+                    "is_suspicious": packet.is_suspicious,
+                    "is_blocked": packet.is_blocked
+                }
 
-            # Enviar a websockets
-            disconnected = set()
-            for ws in active_websockets:
-                try:
-                    await ws.send_json({"type": "packet", "data": packet_dict})
-                except Exception:
-                    disconnected.add(ws)
+                # Enviar a websockets
+                disconnected = set()
+                for ws in active_websockets:
+                    try:
+                        await ws.send_json({"type": "packet", "data": packet_dict})
+                    except Exception:
+                        disconnected.add(ws)
 
-            # Limpiar websockets desconectados
-            active_websockets.difference_update(disconnected)
+                # Limpiar websockets desconectados
+                active_websockets.difference_update(disconnected)
 
     except Exception as e:
         logger.error(f"Error handling packet: {e}")
@@ -500,6 +502,7 @@ async def update_policy(
 ):
     """Actualiza una política de bloqueo"""
     from sqlalchemy import select
+    from datetime import datetime
     result = await db.execute(
         select(models.BlockingPolicy).where(models.BlockingPolicy.id == policy_id)
     )
@@ -703,9 +706,11 @@ async def delete_geo_rule(rule_id: int, db: AsyncSession = Depends(get_db)):
 @app.get("/api/ddos/protection-status", response_model=schemas.DDoSProtectionStatus)
 async def get_protection_status(db: AsyncSession = Depends(get_db)):
     """Obtiene el estado actual de la protección DDoS"""
+    from sqlalchemy import select, func, and_
+    from datetime import datetime, timedelta
     from app.ddos_advanced_service import DDoSAdvancedService
     from app.geoip_service import GeoIPService
-    
+
     # Get active level
     active_level = await DDoSAdvancedService.get_active_level(db)
     
@@ -763,9 +768,12 @@ async def get_protection_status(db: AsyncSession = Depends(get_db)):
 @app.get("/api/ddos/geo-stats")
 async def get_geo_stats(db: AsyncSession = Depends(get_db), limit: int = 10):
     """Obtiene estadísticas de ataques por país"""
+    from sqlalchemy import select, func
+    from datetime import datetime, timedelta
+
     # Get attacks from last 24 hours grouped by country
     yesterday = datetime.utcnow() - timedelta(hours=24)
-    
+
     result = await db.execute(
         select(
             models.DDoSAttack.country_code,

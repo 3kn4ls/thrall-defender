@@ -16,6 +16,7 @@ class PacketCapture:
         self.running = False
         self.packet_callback: Optional[Callable] = None
         self.capture_thread = None
+        self.loop: Optional[asyncio.AbstractEventLoop] = None
 
     def set_callback(self, callback: Callable):
         """Establece el callback para procesar paquetes"""
@@ -79,9 +80,12 @@ class PacketCapture:
                 "timestamp": datetime.utcnow()
             }
 
-            if self.packet_callback:
-                # Ejecutar callback en el loop de asyncio
-                asyncio.create_task(self.packet_callback(packet_data))
+            if self.packet_callback and self.loop:
+                # Ejecutar callback en el loop de asyncio desde otro thread
+                asyncio.run_coroutine_threadsafe(
+                    self.packet_callback(packet_data),
+                    self.loop
+                )
 
         except Exception as e:
             logger.error(f"Error processing packet: {e}")
@@ -120,5 +124,5 @@ class PacketCapture:
 
     async def start_async(self):
         """Inicia la captura en un thread separado"""
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self.start)
+        self.loop = asyncio.get_event_loop()
+        await self.loop.run_in_executor(None, self.start)
