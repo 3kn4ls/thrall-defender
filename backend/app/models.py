@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, Text, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -233,6 +233,90 @@ class DDoSAdvancedConfig(Base):
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class DashboardSnapshot(Base):
+    """
+    Snapshot pre-calculado del dashboard para rendimiento óptimo.
+    Actualizado por un job asíncrono cada N segundos.
+    """
+    __tablename__ = "dashboard_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # Estadísticas generales
+    total_packets = Column(Integer, default=0)
+    packets_last_hour = Column(Integer, default=0)
+    packets_last_24h = Column(Integer, default=0)
+    unique_ips = Column(Integer, default=0)
+    unique_ips_last_hour = Column(Integer, default=0)
+    suspicious_packets = Column(Integer, default=0)
+    active_alerts = Column(Integer, default=0)
+
+    # Top lists (JSON)
+    top_ports = Column(String, default='[]')  # JSON: [{"port": 80, "count": 100}, ...]
+    top_protocols = Column(String, default='[]')  # JSON: [{"protocol": "TCP", "count": 500}, ...]
+    recent_ips = Column(String, default='[]')  # JSON: ["192.168.1.1", ...]
+    top_sources = Column(String, default='[]')  # JSON: [{"ip": "1.2.3.4", "packets": 1000}, ...]
+
+    # Alertas por severidad
+    critical_alerts = Column(Integer, default=0)
+    high_alerts = Column(Integer, default=0)
+    medium_alerts = Column(Integer, default=0)
+    low_alerts = Column(Integer, default=0)
+
+    # DDoS stats
+    active_ddos_attacks = Column(Integer, default=0)
+    blocked_ips_count = Column(Integer, default=0)
+    ddos_attacks_today = Column(Integer, default=0)
+
+    # Firewall stats
+    firewall_blocks_today = Column(Integer, default=0)
+    whitelisted_ips_count = Column(Integer, default=0)
+    blacklisted_ips_count = Column(Integer, default=0)
+
+    # Tráfico (bytes)
+    total_bytes_last_hour = Column(Integer, default=0)
+    total_bytes_last_24h = Column(Integer, default=0)
+
+    # Tiempo de cálculo (para métricas)
+    calculation_time_ms = Column(Float, nullable=True)  # Milisegundos que tomó calcular
+
+
+class AuditLog(Base):
+    """
+    Registro de auditoría para trazabilidad completa.
+    Registra todas las acciones importantes del sistema.
+    """
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # Acción realizada
+    action = Column(String, index=True)  # block_ip, unblock_ip, acknowledge_alert, change_config, etc.
+    category = Column(String, index=True)  # firewall, ddos, alerts, config, system
+    severity = Column(String, index=True)  # info, warning, critical
+
+    # Actor
+    performed_by = Column(String, default="system")  # system, admin, api, auto
+    source_ip = Column(String, nullable=True)  # IP desde donde se realizó la acción
+    user_agent = Column(String, nullable=True)
+
+    # Detalles
+    description = Column(Text)  # Descripción legible de la acción
+    target = Column(String, nullable=True, index=True)  # IP, ID de alerta, etc.
+    details = Column(String, nullable=True)  # JSON con detalles adicionales
+
+    # Resultado
+    success = Column(Boolean, default=True)
+    error_message = Column(String, nullable=True)
+
+    # Contexto adicional
+    affected_resources = Column(String, nullable=True)  # JSON: ["resource1", "resource2"]
+    previous_value = Column(String, nullable=True)  # Para cambios de configuración
+    new_value = Column(String, nullable=True)  # Para cambios de configuración
 
 
 # Aliases for compatibility

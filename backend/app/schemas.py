@@ -404,3 +404,121 @@ class DDoSGeoStats(BaseModel):
     blocked_count: int
     total_packets: int
     severity_distribution: dict
+
+
+# ============================================================================
+# DASHBOARD SNAPSHOT SCHEMAS
+# ============================================================================
+
+class DashboardSnapshotBase(BaseModel):
+    """Dashboard snapshot pre-calculado"""
+    total_packets: int = 0
+    packets_last_hour: int = 0
+    packets_last_24h: int = 0
+    unique_ips: int = 0
+    unique_ips_last_hour: int = 0
+    suspicious_packets: int = 0
+    active_alerts: int = 0
+    top_ports: str = '[]'
+    top_protocols: str = '[]'
+    recent_ips: str = '[]'
+    top_sources: str = '[]'
+    critical_alerts: int = 0
+    high_alerts: int = 0
+    medium_alerts: int = 0
+    low_alerts: int = 0
+    active_ddos_attacks: int = 0
+    blocked_ips_count: int = 0
+    ddos_attacks_today: int = 0
+    firewall_blocks_today: int = 0
+    whitelisted_ips_count: int = 0
+    blacklisted_ips_count: int = 0
+    total_bytes_last_hour: int = 0
+    total_bytes_last_24h: int = 0
+    calculation_time_ms: Optional[float] = None
+
+
+class DashboardSnapshot(DashboardSnapshotBase):
+    """Dashboard snapshot con timestamp"""
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DashboardData(BaseModel):
+    """Dashboard data con listas parseadas (para el frontend)"""
+    total_packets: int
+    packets_last_hour: int
+    packets_last_24h: int
+    unique_ips: int
+    unique_ips_last_hour: int
+    suspicious_packets: int
+    active_alerts: int
+    top_ports: list[dict]  # Parseado de JSON
+    top_protocols: list[dict]  # Parseado de JSON
+    recent_ips: list[str]  # Parseado de JSON
+    top_sources: list[dict]  # Parseado de JSON
+    critical_alerts: int
+    high_alerts: int
+    medium_alerts: int
+    low_alerts: int
+    active_ddos_attacks: int
+    blocked_ips_count: int
+    ddos_attacks_today: int
+    firewall_blocks_today: int
+    whitelisted_ips_count: int
+    blacklisted_ips_count: int
+    total_bytes_last_hour: int
+    total_bytes_last_24h: int
+    last_updated: datetime
+    calculation_time_ms: Optional[float] = None
+
+
+# ============================================================================
+# AUDIT LOG SCHEMAS
+# ============================================================================
+
+class AuditLogBase(BaseModel):
+    """Base para audit logs"""
+    action: str
+    category: str  # firewall, ddos, alerts, config, system
+    severity: str = "info"  # info, warning, critical
+    performed_by: str = "system"
+    source_ip: Optional[str] = None
+    user_agent: Optional[str] = None
+    description: str
+    target: Optional[str] = None
+    details: Optional[str] = None  # JSON
+    success: bool = True
+    error_message: Optional[str] = None
+    affected_resources: Optional[str] = None  # JSON
+    previous_value: Optional[str] = None
+    new_value: Optional[str] = None
+
+
+class AuditLogCreate(AuditLogBase):
+    pass
+
+
+class AuditLog(AuditLogBase):
+    """Audit log completo"""
+    id: int
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AuditLogFilter(BaseModel):
+    """Filtros para consultar audit logs"""
+    category: Optional[str] = None
+    severity: Optional[str] = None
+    action: Optional[str] = None
+    performed_by: Optional[str] = None
+    target: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    limit: int = 100
+    offset: int = 0

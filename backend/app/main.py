@@ -16,6 +16,8 @@ from .ddos_service import DDoSService
 from .ddos_advanced_service import DDoSAdvancedService
 from .cleanup_service import CleanupService
 from .packet_capture import PacketCapture
+from .dashboard_cache_service import dashboard_cache_job, DashboardCacheService
+from .audit_service import AuditService
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -26,6 +28,7 @@ packet_capture = None
 active_websockets = set()
 db_semaphore = asyncio.Semaphore(10)  # Limita operaciones concurrentes de DB
 cleanup_task = None
+dashboard_cache_task = None
 
 
 @asynccontextmanager
@@ -56,6 +59,11 @@ async def lifespan(app: FastAPI):
     cleanup_task = asyncio.create_task(CleanupService.start_cleanup_task())
     logger.info("Database cleanup task started")
 
+    # Iniciar dashboard cache task
+    global dashboard_cache_task
+    dashboard_cache_task = asyncio.create_task(dashboard_cache_job())
+    logger.info("Dashboard cache task started")
+
     yield
 
     # Shutdown
@@ -65,6 +73,12 @@ async def lifespan(app: FastAPI):
         cleanup_task.cancel()
         try:
             await cleanup_task
+        except asyncio.CancelledError:
+            pass
+    if dashboard_cache_task:
+        dashboard_cache_task.cancel()
+        try:
+            await dashboard_cache_task
         except asyncio.CancelledError:
             pass
     logger.info("Thrall Defender Backend stopped")
@@ -798,6 +812,219 @@ async def get_geo_stats(db: AsyncSession = Depends(get_db), limit: int = 10):
             "blocked_count": row.blocked_count or 0,
             "total_packets": int(row.total_packets or 0)
         })
-    
+
     return stats
+
+
+# ============================================================================
+# DASHBOARD CACHE ENDPOINTS
+# ============================================================================
+
+@app.get("/api/dashboard/snapshot", response_model=schemas.DashboardData)
+async def get_dashboard_snapshot(db: AsyncSession = Depends(get_db)):
+    """
+    Obtiene el snapshot más reciente del dashboard (pre-calculado).
+    Este endpoint es MUCHO más rápido que calcular stats en tiempo real.
+    """
+    snapshot = await DashboardCacheService.get_latest_snapshot(db)
+
+    if not snapshot:
+        # Si no hay snapshot, crear uno ahora
+        snapshot = await DashboardCacheService.calculate_and_save_snapshot(db)
+
+    # Parsear JSON strings a listas/dicts
+    return schemas.DashboardData(
+        total_packets=snapshot.total_packets,
+        packets_last_hour=snapshot.packets_last_hour,
+        packets_last_24h=snapshot.packets_last_24h,
+        unique_ips=snapshot.unique_ips,
+        unique_ips_last_hour=snapshot.unique_ips_last_hour,
+        suspicious_packets=snapshot.suspicious_packets,
+        active_alerts=snapshot.active_alerts,
+        top_ports=json.loads(snapshot.top_ports),
+        top_protocols=json.loads(snapshot.top_protocols),
+        recent_ips=json.loads(snapshot.recent_ips),
+        top_sources=json.loads(snapshot.top_sources),
+        critical_alerts=snapshot.critical_alerts,
+        high_alerts=snapshot.high_alerts,
+        medium_alerts=snapshot.medium_alerts,
+        low_alerts=snapshot.low_alerts,
+        active_ddos_attacks=snapshot.active_ddos_attacks,
+        blocked_ips_count=snapshot.blocked_ips_count,
+        ddos_attacks_today=snapshot.ddos_attacks_today,
+        firewall_blocks_today=snapshot.firewall_blocks_today,
+        whitelisted_ips_count=snapshot.whitelisted_ips_count,
+        blacklisted_ips_count=snapshot.blacklisted_ips_count,
+        total_bytes_last_hour=snapshot.total_bytes_last_hour,
+        total_bytes_last_24h=snapshot.total_bytes_last_24h,
+        last_updated=snapshot.created_at,
+        calculation_time_ms=snapshot.calculation_time_ms
+    )
+
+
+@app.post("/api/dashboard/refresh")
+async def force_dashboard_refresh(db: AsyncSession = Depends(get_db)):
+    """
+    Fuerza un recalculo inmediato del dashboard.
+    Normalmente no es necesario (se actualiza automáticamente cada 10s).
+    """
+    snapshot = await DashboardCacheService.calculate_and_save_snapshot(db)
+    return {
+        "status": "refreshed",
+        "snapshot_id": snapshot.id,
+        "created_at": snapshot.created_at,
+        "calculation_time_ms": snapshot.calculation_time_ms
+    }
+
+
+# ============================================================================
+# AUDIT LOG ENDPOINTS
+# ============================================================================
+
+@app.get("/api/audit", response_model=List[schemas.AuditLog])
+async def get_audit_logs(
+    category: Optional[str] = None,
+    severity: Optional[str] = None,
+    action: Optional[str] = None,
+    performed_by: Optional[str] = None,
+    target: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Obtiene logs de auditoría con filtros opcionales.
+    Permite trazabilidad completa de todas las acciones del sistema.
+    """
+    from sqlalchemy import select, desc
+
+    query = select(models.AuditLog).order_by(desc(models.AuditLog.timestamp))
+
+    # Aplicar filtros
+    if category:
+        query = query.where(models.AuditLog.category == category)
+    if severity:
+        query = query.where(models.AuditLog.severity == severity)
+    if action:
+        query = query.where(models.AuditLog.action == action)
+    if performed_by:
+        query = query.where(models.AuditLog.performed_by == performed_by)
+    if target:
+        query = query.where(models.AuditLog.target == target)
+
+    # Paginación
+    query = query.limit(min(limit, 1000)).offset(offset)
+
+    result = await db.execute(query)
+    return result.scalars().all()
+
+
+@app.get("/api/audit/stats")
+async def get_audit_stats(db: AsyncSession = Depends(get_db)):
+    """
+    Obtiene estadísticas de los logs de auditoría.
+    """
+    from sqlalchemy import select, func
+    from datetime import datetime, timedelta
+
+    now = datetime.utcnow()
+    hour_ago = now - timedelta(hours=1)
+    day_ago = now - timedelta(hours=24)
+
+    # Total de logs
+    total_query = select(func.count(models.AuditLog.id))
+    total_result = await db.execute(total_query)
+    total_logs = total_result.scalar() or 0
+
+    # Logs última hora
+    hour_query = select(func.count(models.AuditLog.id)).where(
+        models.AuditLog.timestamp > hour_ago
+    )
+    hour_result = await db.execute(hour_query)
+    logs_last_hour = hour_result.scalar() or 0
+
+    # Logs por categoría
+    category_query = select(
+        models.AuditLog.category,
+        func.count(models.AuditLog.id).label('count')
+    ).group_by(models.AuditLog.category)
+    category_result = await db.execute(category_query)
+    by_category = {row[0]: row[1] for row in category_result.all()}
+
+    # Logs por severidad
+    severity_query = select(
+        models.AuditLog.severity,
+        func.count(models.AuditLog.id).label('count')
+    ).group_by(models.AuditLog.severity)
+    severity_result = await db.execute(severity_query)
+    by_severity = {row[0]: row[1] for row in severity_result.all()}
+
+    # Acciones más comunes
+    actions_query = select(
+        models.AuditLog.action,
+        func.count(models.AuditLog.id).label('count')
+    ).where(
+        models.AuditLog.timestamp > day_ago
+    ).group_by(
+        models.AuditLog.action
+    ).order_by(
+        desc('count')
+    ).limit(10)
+    actions_result = await db.execute(actions_query)
+    top_actions = [{"action": row[0], "count": row[1]} for row in actions_result.all()]
+
+    return {
+        "total_logs": total_logs,
+        "logs_last_hour": logs_last_hour,
+        "by_category": by_category,
+        "by_severity": by_severity,
+        "top_actions_24h": top_actions
+    }
+
+
+@app.get("/api/audit/timeline")
+async def get_audit_timeline(
+    hours: int = 24,
+    category: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Obtiene una timeline de eventos de auditoría.
+    Útil para visualizar actividad del sistema en el tiempo.
+    """
+    from sqlalchemy import select, desc
+    from datetime import datetime, timedelta
+
+    cutoff = datetime.utcnow() - timedelta(hours=hours)
+
+    query = select(models.AuditLog).where(
+        models.AuditLog.timestamp > cutoff
+    ).order_by(desc(models.AuditLog.timestamp))
+
+    if category:
+        query = query.where(models.AuditLog.category == category)
+
+    query = query.limit(500)
+
+    result = await db.execute(query)
+    logs = result.scalars().all()
+
+    # Agrupar por hora para visualización
+    timeline = {}
+    for log in logs:
+        hour_key = log.timestamp.strftime("%Y-%m-%d %H:00")
+        if hour_key not in timeline:
+            timeline[hour_key] = []
+        timeline[hour_key].append({
+            "id": log.id,
+            "timestamp": log.timestamp,
+            "action": log.action,
+            "category": log.category,
+            "severity": log.severity,
+            "description": log.description,
+            "target": log.target,
+            "performed_by": log.performed_by
+        })
+
+    return timeline
 
